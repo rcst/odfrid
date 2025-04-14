@@ -98,6 +98,14 @@ List rod(NumericVector x) {
   NumericVector z(((S * S) - S) / 2);
   NumericVector pi(S);
 
+  // diagnostic tracking
+  IntegerVector vi(((S * S) - S) / 2);
+  IntegerVector vj(((S * S) - S) / 2);
+  IntegerVector vk(((S * S) - S) / 2);
+  NumericVector bi(((S * S) - S) / 2);
+  NumericVector aj(((S * S) - S) / 2);
+
+
   // initialize pi already here with first factor
   // pi(0) = 0 since w_0 = 0
 
@@ -109,6 +117,11 @@ List rod(NumericVector x) {
       yv_check = 0;
       for(int i=0; i<j; ++i) {
         k = ij_to_id(i, j, S);
+	vi(k) = i;
+	vj(k) = j;
+	vk(k) = k;
+	bi(k) = x(i);
+	aj(k) = x(S + j);
         // z_j,j+1 = u_j
         // that's always the last iteration
         // needs to checking
@@ -133,7 +146,9 @@ List rod(NumericVector x) {
         // better to loop over random draw:
         if(j == S-1) 
           y_curr(k) = z(k);
-        else {
+        else if(z(k) == 0)
+		y(k) = 0;
+	else {
           do {
             ytmp = (int)runif(1, 0, z(k)+1)[0];
           } while ((yv_check + ytmp) > x(S+j));
@@ -144,6 +159,7 @@ List rod(NumericVector x) {
         // if(yv_check > x(S+j)) {
         //   break;
         // }
+	// Rcout << "i: " << i << " j: " << j << " k: " << k << " z: " << z(k) << " y: " << y_curr(k) << std::endl;
       }
     // } while(yv_check != x(S+j));
   }
@@ -180,10 +196,21 @@ List rod(NumericVector x) {
   // accept or not?
   y = y_curr;
 
+  // diagnostic data.frame
+  DataFrame dg = DataFrame::create(
+		  Named("i") = vi, 
+		  Named("j") = vj, 
+		  Named("k") = vk, 
+		  Named("z") = z, 
+		  Named("y") = y, 
+		  Named("ui") = bi, 
+		  Named("vj") = aj);
+
   return List::create(Named("y") = y,
                       Named("z") = z,
                       Named("pi") = pi,
-                      Named("q") = q);
+                      Named("q") = q,
+		      Named("dg") = dg);
 }
 
 // [[Rcpp::export]]

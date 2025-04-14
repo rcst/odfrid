@@ -1,23 +1,26 @@
+library(data.table)
 sum(softmax(1:10))
 
-S <- 40
+S <- 15
 S*(S-1)/2
 x <- c(seq(S-1, 0), seq(0, S-1))
 w <- load(x)
 length(w)
 ll <- rod(x)
+x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
+wrongs <- which(x!=x_check, arr.ind = TRUE)
+wrongs
+x[wrongs]
+x_check[wrongs]
 ll[["z"]] |> as.vector()
 ll[["y"]] |> as.vector()
 ll[["pi"]] |> as.vector()
 ll[["q"]] |> as.vector()
 
-
-x_check <- as.vector(routing_matrix(S) %*% ll[["y"]])
 x
 x_check
-x[which(x!=x_check)]
-
-
+dg <- as.data.table(ll[["dg"]])
+dg[j == 2]
 
 
 sum(((a <- runif(1000000)) >=0.99999)
@@ -30,6 +33,10 @@ library(microbenchmark)
 microbenchmark(as.integer(runif(1, 0, 6)), 
                sample.int(5, size = 1, replace = TRUE)-1, 
                times = 10000)
+
+microbenchmark(rod(c(seq(20, 0), seq(0, 20))),
+               rod(c(seq(40, 0), seq(0, 40))),
+               rod(c(seq(75, 0), seq(0, 75))), unit = "milliseconds")
 
 
 
