@@ -86,82 +86,50 @@ List rod(NumericVector x) {
   
   int S = x.size() / 2;
   NumericVector w;
-  // NOTE: static vars do NOT get reinitialized 
-  // between subsequent function calls from R
-  // ie., need main function that initializes
-
-  // Need to use pointers to carry over the current set of parameters
-  // idea: wrap everything into a struct and pass it around via a pointer
-  // use a "main" function to create this struct (on the heap?)
   NumericVector y(((S * S) - S) / 2);
-  NumericVector y_curr(((S * S) - S) / 2);
   NumericVector z(((S * S) - S) / 2);
   NumericVector pi(S);
 
-  // diagnostic tracking
-  IntegerVector vi(((S * S) - S) / 2);
-  IntegerVector vj(((S * S) - S) / 2);
-  IntegerVector vk(((S * S) - S) / 2);
-  NumericVector bi(((S * S) - S) / 2);
-  NumericVector aj(((S * S) - S) / 2);
-
-
-  // initialize pi already here with first factor
-  // pi(0) = 0 since w_0 = 0
-
   int k =  0;
+  int kjm1 = 0;
   int yv_check = 0;
-  int ytmp = 0;
   for(int j=1; j<S; ++j) {
-    // do {
       yv_check = 0;
       for(int i=0; i<j; ++i) {
         k = ij_to_id(i, j, S);
-	vi(k) = i;
-	vj(k) = j;
-	vk(k) = k;
-	bi(k) = x(i);
-	aj(k) = x(S + j);
-        // z_j,j+1 = u_j
-        // that's always the last iteration
-        // needs to checking
-        if(j==i+1) z(k) = x(i); 
-        else z(k) = z(k-1) - y_curr(k-1);
+	kjm1 = ij_to_id(i, j-1, S);
 
-        // alight all at the last stop
-        // NOTE: Maybe faster to sample 
-        // from remainder of v_j and avoid 
-        // constraint check?
+	// +++ SETTING Z +++ 
+	// z_j,j+1 = u_j
+        if(i==j-1) z(k) = x(i);
+        else z(k) = z(kjm1) - y(kjm1);
 
-        // this could also be avoided
-        // and done in bulk after the current
-        // loop
-        // if(j == S-1) y_curr(k) = z(k);
-        // else y_curr(k) = (int)runif(1, 0, z(k)+1)[0];
+	Rcout << z(k) << "(" << k << ")" << std::endl;
 
-        // yv_check += y_curr(k);
-        // check for early exit
-        // still bad, because it loses all
-        // previous iterations
-        // better to loop over random draw:
-        if(j == S-1) 
-          y_curr(k) = z(k);
-        else if(z(k) == 0)
-		y(k) = 0;
-	else {
-          do {
-            ytmp = (int)runif(1, 0, z(k)+1)[0];
-          } while ((yv_check + ytmp) > x(S+j));
-          y_curr(k) = ytmp;
-        }
-        yv_check += ytmp;
+	if(z(k) < 0) {
+		Rcout << "neg. z!" << std::endl; 
+		Rcout << "i: " << i << " j: " << j << " k: " << k << " z:" << z(k) << " zprev: " << z(kjm1) << " y: " << y(k) << " y_prev: " << y(kjm1) << " sum: " << yv_check << " ui: "<< x(j) << " vj: " << x(S+j) << std::endl;
+	}
 
-        // if(yv_check > x(S+j)) {
-        //   break;
-        // }
-	// Rcout << "i: " << i << " j: " << j << " k: " << k << " z: " << z(k) << " y: " << y_curr(k) << std::endl;
+	// +++ SETTING Y +++
+	// alight everyone at last stop
+	if(j == S-1) y(k) = z(k);
+	// if none on board, none to alight
+	else if(z(k) == 0) y(k) = 0;
+	// last i of given j -> alight remainder
+	else if(i==j-1)	y(k) = x(S+j) - yv_check;
+	else
+		// sample randomly
+		do y(k) = (int)runif(1, 0, z(k)+1)[0];
+		while ((yv_check + y(k)) > x(S+j));
+
+
+	if(y(k) < 0) {
+		Rcout << "neg. y !" << std::endl; 
+		Rcout << "i: " << i << " j: " << j << " k: " << k << " z:" << z(k) << " y: " << y(k) << "sum: " << yv_check << " ui: "<< x(j) << " vj: " << x(S+j) << std::endl;
+	}
+	yv_check += y(k);
       }
-    // } while(yv_check != x(S+j));
   }
 
   // Markov Chain Transition Probabilities
@@ -175,7 +143,7 @@ List rod(NumericVector x) {
   // perhaps better to use lchoose
   // and product sums
   NumericVector pi2;
-  pi2 = choose(z, y_curr);
+  pi2 = choose(z, y);
   // pi2 = lchoose(z, y);
   double pi3 = 1.0;
   // double pi3 = 0.0;
@@ -193,24 +161,10 @@ List rod(NumericVector x) {
 
   q *= pi3; 
 
-  // accept or not?
-  y = y_curr;
-
-  // diagnostic data.frame
-  DataFrame dg = DataFrame::create(
-		  Named("i") = vi, 
-		  Named("j") = vj, 
-		  Named("k") = vk, 
-		  Named("z") = z, 
-		  Named("y") = y, 
-		  Named("ui") = bi, 
-		  Named("vj") = aj);
-
   return List::create(Named("y") = y,
                       Named("z") = z,
                       Named("pi") = pi,
-                      Named("q") = q,
-		      Named("dg") = dg);
+                      Named("q") = q);
 }
 
 // [[Rcpp::export]]

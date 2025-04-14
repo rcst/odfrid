@@ -1,11 +1,11 @@
 library(data.table)
 sum(softmax(1:10))
 
-S <- 15
+S <- 100 
 S*(S-1)/2
 x <- c(seq(S-1, 0), seq(0, S-1))
-w <- load(x)
-length(w)
+# w <- load(x)
+# length(w)
 ll <- rod(x)
 x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
 wrongs <- which(x!=x_check, arr.ind = TRUE)
@@ -17,10 +17,19 @@ ll[["y"]] |> as.vector()
 ll[["pi"]] |> as.vector()
 ll[["q"]] |> as.vector()
 
+# checking for rare negative OD
+for(i in 1:20) {
+  ll <- rod(x)
+  stopifnot(all(ll[["y"]] >=0))
+}
+
+
+
 x
 x_check
+
 dg <- as.data.table(ll[["dg"]])
-dg[j == 2]
+dg[i == j-1]
 
 
 sum(((a <- runif(1000000)) >=0.99999)
@@ -36,7 +45,8 @@ microbenchmark(as.integer(runif(1, 0, 6)),
 
 microbenchmark(rod(c(seq(20, 0), seq(0, 20))),
                rod(c(seq(40, 0), seq(0, 40))),
-               rod(c(seq(75, 0), seq(0, 75))), unit = "milliseconds")
+               rod(c(seq(75, 0), seq(0, 75))),
+               rod(c(seq(100,0), seq(0, 100))), unit = "seconds")
 
 
 
