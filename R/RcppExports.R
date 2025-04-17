@@ -26,6 +26,10 @@ routing_matrix <- function(s) {
     .Call(`_odfrid_routing_matrix`, s)
 }
 
+test_flat_index <- function(S) {
+    invisible(.Call(`_odfrid_test_flat_index`, S))
+}
+
 #' Conditional Sampling of OD vectors
 #' 
 #' @param x a column vector containing boarding and alighting counts of 1 bus

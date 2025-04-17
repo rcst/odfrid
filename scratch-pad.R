@@ -1,32 +1,22 @@
 library(data.table)
 sum(softmax(1:10))
 
-S <- 100 
+S <- 10 
 S*(S-1)/2
 x <- c(seq(S-1, 0), seq(0, S-1))
-# w <- load(x)
-# length(w)
-ll <- rod(x)
-x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
-wrongs <- which(x!=x_check, arr.ind = TRUE)
-wrongs
-x[wrongs]
-x_check[wrongs]
-ll[["z"]] |> as.vector()
-ll[["y"]] |> as.vector()
-ll[["pi"]] |> as.vector()
-ll[["q"]] |> as.vector()
-
 # checking for rare negative OD
 for(i in 1:20) {
   ll <- rod(x)
   stopifnot(all(ll[["y"]] >=0))
+  x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
+  stopifnot(all(x == x_check))
 }
 
-
+test_flat_index(6)
 
 x
 x_check
+which(x != x_check, arr.ind = TRUE)
 
 dg <- as.data.table(ll[["dg"]])
 dg[i == j-1]

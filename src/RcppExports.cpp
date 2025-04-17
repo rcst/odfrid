@@ -33,6 +33,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// test_flat_index
+void test_flat_index(int S);
+RcppExport SEXP _odfrid_test_flat_index(SEXP SSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type S(SSEXP);
+    test_flat_index(S);
+    return R_NilValue;
+END_RCPP
+}
 // rod
 List rod(NumericVector x);
 RcppExport SEXP _odfrid_rod(SEXP xSEXP) {
@@ -59,6 +69,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
+    {"_odfrid_test_flat_index", (DL_FUNC) &_odfrid_test_flat_index, 1},
     {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
     {"_odfrid_softmax", (DL_FUNC) &_odfrid_softmax, 1},
     {NULL, NULL, 0}

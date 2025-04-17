@@ -71,6 +71,42 @@ arma::imat routing_matrix(int s) {
   return A;
 }
 
+NumericVector vrunif(double min, NumericVector max) {
+	NumericVector r(max.size());
+	for(int i=0; i<max.size(); ++i)
+		r[i] = (int)runif(1, min, max[i])[0];
+
+	return r;
+}
+
+// [[Rcpp::export]]
+void test_flat_index(int S) {
+	for(int i=0; i<S; ++i)
+		for(int j=i+1; j<S; ++j)
+			Rcout << "i: " << i << 
+				" j: " << j << 
+				" k: " << ij_to_id(i, j, S) << std::endl;
+}
+
+
+//' Round NumericVector to IntegerVector while preserving it's sum
+//'
+//' from https://stackoverflow.com/questions/792460/how-to-round-floats-to-integers-while-preserving-their-sum
+// [[Rcpp::export]]
+IntegerVector round_ws(NumericVector x) {
+	double temp[x.size()][x.size()];
+	double expSum = sum(x);
+	double lowerSum = 0.0;
+
+	for(int i=0; i<x.size(); ++i) {
+		temp[i] = floor(x[i]);
+		lowerSum += temp[i];
+	}
+
+
+
+}
+
 //' Conditional Sampling of OD vectors
 //' 
 //' @param x a column vector containing boarding and alighting counts of 1 bus
@@ -85,86 +121,158 @@ List rod(NumericVector x) {
   // is faster
   
   int S = x.size() / 2;
-  NumericVector w;
+  IntegerVector w;
   NumericVector y(((S * S) - S) / 2);
   NumericVector z(((S * S) - S) / 2);
   NumericVector pi(S);
 
+  NumericVector u(S); 
+  NumericVector v(S);
+  u = x[seq(0, S-1)];
+  v = x[seq(S, x.size()-1)];
+
   int k =  0;
-  int kjm1 = 0;
+  int k_ijm1 = 0;
+  // int lower, upper = 0;
   int yv_check = 0;
+  // int sample_limit = 0;
   for(int j=1; j<S; ++j) {
-      yv_check = 0;
-      for(int i=0; i<j; ++i) {
-        k = ij_to_id(i, j, S);
-	kjm1 = ij_to_id(i, j-1, S);
+	  // x[1] = ui
+	  // x[S+j] = vj
+	  yv_check = 0;
+	  for(int i=0; i<j; ++i) {
+		  Rcout << "+++ SETTING Z +++" << std::endl;
+		  k = ij_to_id(i, j, S);
+		  k_ijm1= ij_to_id(i, j-1, S);
 
-	// +++ SETTING Z +++ 
-	// z_j,j+1 = u_j
-        if(i==j-1) z(k) = x(i);
-        else z(k) = z(kjm1) - y(kjm1);
+		  // Rcout << "i: " << i << 
+		  // 	" j: " << j << 
+		  // 	" k: " << k << 
+		  // 	" kprev: " << k_ijm1 << std::endl;
 
-	Rcout << z(k) << "(" << k << ")" << std::endl;
+		  // +++ SETTING Z +++ 
+		  // z_j,j+1 = u_j
+		  if(i==j-1) z(k) = u(i);
+		  // else z(k) = z(k_ijm1) - y(k_ijm1);
+		  else z(k) = z(k_ijm1) - y(k_ijm1);
 
-	if(z(k) < 0) {
-		Rcout << "neg. z!" << std::endl; 
-		Rcout << "i: " << i << " j: " << j << " k: " << k << " z:" << z(k) << " zprev: " << z(kjm1) << " y: " << y(k) << " y_prev: " << y(kjm1) << " sum: " << yv_check << " ui: "<< x(j) << " vj: " << x(S+j) << std::endl;
-	}
+		  Rcout << "+++ SAMPLING +++" << " " << j << std::endl;
+		  // bulk sample
+		  // lower = ij_to_id(0, j, S);
+		  // upper = ij_to_id(j-1, j, S);
+		  // Rcout << "    FROM " << lower << " TO " << upper << std::endl;
+		  do y(k) = (int)rbinom(1, z(k)+1, 0.5)[0];
+		  while (yv_check + y(k) > x(S+j));
 
-	// +++ SETTING Y +++
-	// alight everyone at last stop
-	if(j == S-1) y(k) = z(k);
-	// if none on board, none to alight
-	else if(z(k) == 0) y(k) = 0;
-	// last i of given j -> alight remainder
-	else if(i==j-1)	y(k) = x(S+j) - yv_check;
-	else
-		// sample randomly
-		do y(k) = (int)runif(1, 0, z(k)+1)[0];
-		while ((yv_check + y(k)) > x(S+j));
+		  yv_check += y(k);
+
+		  Rcout << "+++ DONE +++" << std::endl;
+	  }
 
 
-	if(y(k) < 0) {
-		Rcout << "neg. y !" << std::endl; 
-		Rcout << "i: " << i << " j: " << j << " k: " << k << " z:" << z(k) << " y: " << y(k) << "sum: " << yv_check << " ui: "<< x(j) << " vj: " << x(S+j) << std::endl;
-	}
-	yv_check += y(k);
-      }
+
+
+//		      Rcout << "z: " << z(k) << "(" << k << ")" << std::endl;
+//
+//	      if(z(k) < 0) {
+//		      Rcout << "neg. z!" << std::endl; 
+//		      Rcout << "i: " << i << 
+//			      " j: " << j << 
+//			      " k: " << k << 
+//			      " kprev: " << k_ijm1 << 
+//			      " z:" << z(k) << 
+//			      " zprev: " << z(k_ijm1) << 
+//			      " y: " << y(k) << 
+//			      " y_prev: " << y(k_ijm1) << 
+//			      " sum: " << yv_check << 
+//			      " ui: "<< u(i) << 
+//			      " vj: " << v(j) << std::endl;
+//	      }
+//
+//	      // +++ SETTING Y +++
+//	      // Rcout << "+++ SETTING Y +++" << std::endl;
+//
+//	      sample_limit = std::min(v(j) - yv_check, z(k));	
+//	      if(j==S-1) y(k) = sample_limit;
+//	      else {
+//		      if(i==j-1) y(k) = sample_limit;
+//		      else y(k) = (int)runif(1, 0, sample_limit+1)[0];
+//
+//	      }
+//
+//	      // Rcout << "+++ DONE +++" << std::endl;
+//
+//
+//
+//	      if(y(k) < 0) {
+//		      Rcout << "neg. y !" << std::endl; 
+//		      Rcout << "i: " << i << 
+//			      " j: " << j << 
+//			      " k: " << k << 
+//			      " kprev: " << k_ijm1 << 
+//			      " z:" << z(k) << 
+//			      " zprev: " << z(k_ijm1) << 
+//			      " y: " << y(k) << 
+//			      " y_prev: " << y(k_ijm1) << 
+//			      " sum: " << yv_check << 
+//			      " ui: "<< u(i) << 
+//			      " vj: " << v(j) << std::endl;
+//	      }
+//
+//	      if((yv_check + y(k)) > v(j) && k_ijm1 >= 0) {
+//		      Rcout << "y check fail or full!" << std::endl; 
+//		      Rcout << "i: " << i << 
+//			      " j: " << j << 
+//			      " k: " << k << 
+//			      " kprev: " << k_ijm1 << 
+//			      " z:" << z(k) << 
+//			      " zprev: " << z(k_ijm1) << 
+//			      " y: " << y(k) << 
+//			      " y_prev: " << y(k_ijm1) << 
+//			      " sum: " << yv_check << 
+//			      " ui: "<< u(i) << 
+//			      " vj: " << v(j) << std::endl;
+//	      }
+//
+//	      yv_check += y(k);
+//
+//
+//      }
   }
 
-  // Markov Chain Transition Probabilities
-  w = load(x);
-  NumericVector v;
-  v = x[seq(S+1, x.size()-1)];
-  pi = 1 / choose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
-  // using log-choose for computational efficiency
-  // log_pi = -1 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
-  
-  // perhaps better to use lchoose
-  // and product sums
-  NumericVector pi2;
-  pi2 = choose(z, y);
-  // pi2 = lchoose(z, y);
-  double pi3 = 1.0;
-  // double pi3 = 0.0;
-  for(int i=0; i<pi2.size(); ++i) {
-    pi3 *= pi2[i];
-    // pi3 += pi2[i];
-  }
+  // // Markov Chain Transition Probabilities
+  // w = load(x);
+  // NumericVector v;
+  // v = x[seq(S+1, x.size()-1)];
+  // pi = 1 / choose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
+  // // using log-choose for computational efficiency
+  // // log_pi = -1 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
+  // 
+  // // perhaps better to use lchoose
+  // // and product sums
+  // NumericVector pi2;
+  // pi2 = choose(z, y);
+  // // pi2 = lchoose(z, y);
+  // double pi3 = 1.0;
+  // // double pi3 = 0.0;
+  // for(int i=0; i<pi2.size(); ++i) {
+  //   pi3 *= pi2[i];
+  //   // pi3 += pi2[i];
+  // }
 
-  double q = 1.0;
-  // double q = 0.0;
-  for(int i=0; i<pi.size(); ++i) {
-    q *= pi[i];
-    // q += pi[i];
-  }
+  // double q = 1.0;
+  // // double q = 0.0;
+  // for(int i=0; i<pi.size(); ++i) {
+  //   q *= pi[i];
+  //   // q += pi[i];
+  // }
 
-  q *= pi3; 
+  // q *= pi3; 
 
   return List::create(Named("y") = y,
-                      Named("z") = z,
-                      Named("pi") = pi,
-                      Named("q") = q);
+		  Named("z") = z);
+  // Named("pi") = pi,
+  // Named("q") = q];
 }
 
 // [[Rcpp::export]]
