@@ -11,6 +11,18 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// adjustWithCaps
+std::vector<int> adjustWithCaps(const std::vector<int>& x, const std::vector<int>& z);
+RcppExport SEXP _odfrid_adjustWithCaps(SEXP xSEXP, SEXP zSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<int>& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int>& >::type z(zSEXP);
+    rcpp_result_gen = Rcpp::wrap(adjustWithCaps(x, z));
+    return rcpp_result_gen;
+END_RCPP
+}
 // load
 NumericVector load(NumericVector x);
 RcppExport SEXP _odfrid_load(SEXP xSEXP) {
@@ -33,23 +45,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// test_flat_index
-void test_flat_index(int S);
-RcppExport SEXP _odfrid_test_flat_index(SEXP SSEXP) {
+// ztoy
+IntegerVector ztoy(IntegerVector z, double v);
+RcppExport SEXP _odfrid_ztoy(SEXP zSEXP, SEXP vSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type S(SSEXP);
-    test_flat_index(S);
-    return R_NilValue;
+    Rcpp::traits::input_parameter< IntegerVector >::type z(zSEXP);
+    Rcpp::traits::input_parameter< double >::type v(vSEXP);
+    rcpp_result_gen = Rcpp::wrap(ztoy(z, v));
+    return rcpp_result_gen;
 END_RCPP
 }
 // rod
-List rod(NumericVector x);
+List rod(IntegerVector x);
 RcppExport SEXP _odfrid_rod(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type x(xSEXP);
     rcpp_result_gen = Rcpp::wrap(rod(x));
     return rcpp_result_gen;
 END_RCPP
@@ -65,13 +79,40 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// roundWithPreservedSum
+std::vector<int> roundWithPreservedSum(const std::vector<double>& fn);
+RcppExport SEXP _odfrid_roundWithPreservedSum(SEXP fnSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type fn(fnSEXP);
+    rcpp_result_gen = Rcpp::wrap(roundWithPreservedSum(fn));
+    return rcpp_result_gen;
+END_RCPP
+}
+// uniformSimplexSample
+std::vector<double> uniformSimplexSample(int N, double C, double A);
+RcppExport SEXP _odfrid_uniformSimplexSample(SEXP NSEXP, SEXP CSEXP, SEXP ASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< double >::type C(CSEXP);
+    Rcpp::traits::input_parameter< double >::type A(ASEXP);
+    rcpp_result_gen = Rcpp::wrap(uniformSimplexSample(N, C, A));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_odfrid_adjustWithCaps", (DL_FUNC) &_odfrid_adjustWithCaps, 2},
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
-    {"_odfrid_test_flat_index", (DL_FUNC) &_odfrid_test_flat_index, 1},
+    {"_odfrid_ztoy", (DL_FUNC) &_odfrid_ztoy, 2},
     {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
     {"_odfrid_softmax", (DL_FUNC) &_odfrid_softmax, 1},
+    {"_odfrid_roundWithPreservedSum", (DL_FUNC) &_odfrid_roundWithPreservedSum, 1},
+    {"_odfrid_uniformSimplexSample", (DL_FUNC) &_odfrid_uniformSimplexSample, 3},
     {NULL, NULL, 0}
 };
 
