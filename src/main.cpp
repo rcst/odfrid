@@ -165,6 +165,6 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
   for(int r = 0; r < G.n_rows; ++r)
     lambda(i) = softmax(G.row(i) * rho);
 
-  // implemented here Eq (6.11)
+  // implement here Eq (6.11)
 
 }
