@@ -42,14 +42,18 @@ ztoy <- function(z, v) {
 #' 
 #' @param x a column vector containing boarding and alighting counts of 1 bus
 #' journey
-#' @return A named list of containing (1) the sampled OD vector, (2) a corresponging vector (z)
-#' (3) a vector of corresponding Markov chain transition probabilities
+#' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
+#' the log probability density from Markov chain transition probabilities (named lq)
 rod <- function(x) {
     .Call(`_odfrid_rod`, x)
 }
 
 softmax <- function(x) {
     .Call(`_odfrid_softmax`, x)
+}
+
+log_likelihood <- function(y, x, phi, psi) {
+    .Call(`_odfrid_log_likelihood`, y, x, phi, psi)
 }
 
 roundWithPreservedSum <- function(fn) {

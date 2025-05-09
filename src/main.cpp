@@ -148,3 +148,23 @@ NumericVector softmax(const NumericVector &x) {
   return ex / (1.0 * sum(ex));
 }
 
+// [[Rcpp::export]]
+arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho) {
+  arma::vec ay = as<arma::vec>(y);
+  arma::vec ax = as<arma::vec>(x);
+
+  arma::mat aphi = as<arma::mat>(phi);
+  arma::mat apsi = as<arma::mat>(psi);
+
+  // columns -> trips
+  // rows -> stops (S-2)
+  arma::mat G = phi * psi.t();
+
+  arma::vec lambda(G.n_rows);
+  // set lambda_S-1,S = 1
+  for(int r = 0; r < G.n_rows; ++r)
+    lambda(i) = softmax(G.row(i) * rho);
+
+  // implemented here Eq (6.11)
+
+}

@@ -1,7 +1,7 @@
 library(data.table)
 sum(softmax(1:10))
 
-S <- 75 
+S <- 10 
 S*(S-1)/2
 x <- c(seq(S-1, 0), seq(0, S-1))
 # checking for rare negative OD
