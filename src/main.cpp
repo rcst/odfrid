@@ -32,10 +32,10 @@ int ij_to_id(int i, int j, int S) {
 //' @param x column vector of boardings and alightings
 //' @return vector of passengers loadings immediatly after each stops
 // [[Rcpp::export]]
-NumericVector load(NumericVector x) {
+IntegerVector load(IntegerVector x) {
   int S = x.size() / 2.0;
   // std::cout << "S: " << S << std::endl;
-  NumericVector w(S);
+  IntegerVector w(S);
 
   for(int i = 0; i<S; ++i) {
     // std::cout << x(i) << " " << x(S+i) << std::endl;
@@ -90,12 +90,11 @@ IntegerVector ztoy(IntegerVector z, double v) {
 //' 
 //' @param x a column vector containing boarding and alighting counts of 1 bus
 //' journey
-//' @return A named list of containing (1) the sampled OD vector, (2) a corresponging vector (z)
-//' (3) a vector of corresponding Markov chain transition probabilities
+//' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
+//' the log probability density from Markov chain transition probabilities (named lq)
 // [[Rcpp::export]]
 List rod(IntegerVector x) {
   int S = x.size() / 2;
-  IntegerVector w;
   IntegerVector y(((S * S) - S) / 2);
   IntegerVector z(((S * S) - S) / 2);
   NumericVector pi(S);
@@ -124,38 +123,22 @@ List rod(IntegerVector x) {
   }
 
   // Markov Chain Transition Probabilities
-  // w = load(x);
-  // NumericVector v;
-  // v = x[seq(S+1, x.size()-1)];
-  // pi = 1 / choose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
-  // using log-choose for computational efficiency
-  // log_pi = -1 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
-  // 
-  // // perhaps better to use lchoose
-  // // and product sums
-  // NumericVector pi2;
-  // pi2 = choose(z, y);
-  // // pi2 = lchoose(z, y);
-  // double pi3 = 1.0;
-  // // double pi3 = 0.0;
-  // for(int i=0; i<pi2.size(); ++i) {
-  //   pi3 *= pi2[i];
-  //   // pi3 += pi2[i];
-  // }
+  NumericVector w;
+  NumericVector v;
+  NumericVector pi_1;
+  NumericVector pi_2;
+  double lq = 0.0;
+  w = load(x);
+  v = x[seq(S+1, x.size()-1)];
+  pi_1 = -1.0 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
+  pi_2 = lchoose(as<NumericVector>(z), as<NumericVector>(y));
 
-  // double q = 1.0;
-  // // double q = 0.0;
-  // for(int i=0; i<pi.size(); ++i) {
-  //   q *= pi[i];
-  //   // q += pi[i];
-  // }
-
-  // q *= pi3; 
+  for(const auto &x : pi_1) lq += x;
+  for(const auto &x : pi_2) lq += x;
 
   return List::create(Named("y") = y,
-		  Named("z") = z);
-  // Named("pi") = pi,
-  // Named("q") = q];
+		  Named("z") = z,
+      Named("lq") = lq);
 }
 
 // [[Rcpp::export]]
