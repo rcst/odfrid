@@ -79,20 +79,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// log_likelihood
-NumericMatrix log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi);
-RcppExport SEXP _odfrid_log_likelihood(SEXP ySEXP, SEXP xSEXP, SEXP phiSEXP, SEXP psiSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
-    rcpp_result_gen = Rcpp::wrap(log_likelihood(y, x, phi, psi));
-    return rcpp_result_gen;
-END_RCPP
-}
 // roundWithPreservedSum
 std::vector<int> roundWithPreservedSum(const std::vector<double>& fn);
 RcppExport SEXP _odfrid_roundWithPreservedSum(SEXP fnSEXP) {
@@ -125,7 +111,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_odfrid_ztoy", (DL_FUNC) &_odfrid_ztoy, 2},
     {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
     {"_odfrid_softmax", (DL_FUNC) &_odfrid_softmax, 1},
-    {"_odfrid_log_likelihood", (DL_FUNC) &_odfrid_log_likelihood, 4},
     {"_odfrid_roundWithPreservedSum", (DL_FUNC) &_odfrid_roundWithPreservedSum, 1},
     {"_odfrid_uniformSimplexSample", (DL_FUNC) &_odfrid_uniformSimplexSample, 3},
     {NULL, NULL, 0}

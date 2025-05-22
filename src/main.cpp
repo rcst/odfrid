@@ -127,14 +127,12 @@ List rod(IntegerVector x) {
   NumericVector v;
   NumericVector pi_1;
   NumericVector pi_2;
-  double lq = 0.0;
   w = load(x);
   v = x[seq(S+1, x.size()-1)];
   pi_1 = -1.0 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
   pi_2 = lchoose(as<NumericVector>(z), as<NumericVector>(y));
 
-  for(const auto &x : pi_1) lq += x;
-  for(const auto &x : pi_2) lq += x;
+  double lq = sum(pi_1) + sum(pi_2);
 
   return List::create(Named("y") = y,
 		  Named("z") = z,
@@ -165,6 +163,9 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
   for(int r = 0; r < G.n_rows; ++r)
     lambda(i) = softmax(G.row(i) * rho);
 
-  // implement here Eq (6.11)
+  // Eq (6.11)
+  double log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
+  double log_sum_mult = sum(log(pow(lambda, y)) - lfactorial(y));
 
+  return log_sum_u + log_sum_mult;
 }

@@ -52,10 +52,6 @@ softmax <- function(x) {
     .Call(`_odfrid_softmax`, x)
 }
 
-log_likelihood <- function(y, x, phi, psi) {
-    .Call(`_odfrid_log_likelihood`, y, x, phi, psi)
-}
-
 roundWithPreservedSum <- function(fn) {
     .Call(`_odfrid_roundWithPreservedSum`, fn)
 }
