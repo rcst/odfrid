@@ -198,8 +198,6 @@ arma::vec softmax(const arma::vec &x) {
 //' @param G: M x N matrix (G = Phi %*% t(Psi))
 //' @param rho: temperature parameter
 //' @return: M x N matrix Lambda of softmax values
-//' 
-// [[Rcpp::export]]
 arma::mat matrix_softmax(const arma::mat& G, double rho) {
   // G has one row less than lambda - ie, G_S-1
   int M = G.n_rows;
@@ -224,7 +222,7 @@ arma::mat matrix_softmax(const arma::mat& G, double rho) {
       exp_vals(arma::span(0, len - 2)) = exp(scaled(arma::span(0, len - 2)) - max(scaled));  // stabilization
       exp_vals(len - 1) = 1.0;
 
-      double denom = accu(exp_vals);
+      double denom = 1.0 + accu(exp_vals);
       for (int k = 0; k < len; ++k) {
         Lambda(start + k, col) = exp_vals(k) / denom;
       }
@@ -237,7 +235,7 @@ arma::mat matrix_softmax(const arma::mat& G, double rho) {
 }
 
 // [[Rcpp::export]]
-arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho) {
+double log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho) {
 
   // perhaps best is to have this function
   // evaluate the likelihood of a single y^n
@@ -249,7 +247,8 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
   int S = x.size() / 2;
   // alternative arma::uvec (for unsigned int vectors)
   arma::vec ay = as<arma::vec>(y);
-  arma::vec ax = as<arma::vec>(x);
+  // arma::vec ax = as<arma::vec>(x);
+  arma::vec u = as<arma::vec>(x)(arma::span(0, S-1));
 
   arma::mat aphi = as<arma::mat>(phi);
   arma::mat apsi = as<arma::mat>(psi);
@@ -257,22 +256,21 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
   // columns -> trips
   // rows -> stops (S-2)
   arma::mat G = aphi * apsi.t();
-  arma::mat lambda(G.n_rows, G.n_cols);
-  
-  // set lambda_S-1,S = 1
-  for(arma::uword n = 0; n < G.n_cols; ++n) {
-    for(int i = 0; i < S; ++i) {
-      // lambda(i) = softmax(as<NumericVector>(G.row(i) * rho));
-      arma::umat idx;
-      idx = sub2ind(size(lambda), i_to_id(i, n, S));
-      lambda.elem(idx) = softmax(G.col(n) * rho);
-    }
-  }
+  arma::mat lambda = matrix_softmax(G, rho);
 
+  double logl = accu(lgamma(u + 1.0));
+  // logl = accu(lgamma(x(arma::span(0, S-1)))) + accu(y * log(lambda) - lgamma(y + 1.0));
+  // logl = accu(lgamma(u + 1.0)) + accu(y * log(lambda) - lgamma(y + 1.0));
+  for(arma::uword c = 0; c < lambda.n_cols; ++c) {
+    logl += accu(ay.col(c) * log(lambda.col(c)) - lgamma(ay.col(c) + 1.0));
+  }
+  
   // Eq (6.11)
   // for each bus trip
   // double log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
+  // double log_sum_u = accu(lgamma(x(arma::span(0, S-1))));
   // double log_sum_mult = sum(log(pow(lambda, y)) - lfactorial(y));
+  // double log_sum_mult = accu(y * log(lambda) - lgamma(y + 1.0)); // missing power of y_ij!
 
   // arma::vec likelihood(lambda.n_cols);
   // for(arma::uword n = 0; n < lambda.n_cols; ++n) {
@@ -282,5 +280,5 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
 
 
   // return log_sum_u + log_sum_mult;
-  return lambda;
+  return logl;
 }
