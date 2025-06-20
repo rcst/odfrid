@@ -12,7 +12,7 @@ using namespace Rcpp;
 //
 // [[Rcpp::depends(RcppArmadillo)]]
 
-//' OD-vector(s) index mapping function
+//' ij_to_id - OD-vector(s) index mapping function
 //' 
 //' Help function to flatten indexing of OD-vectors and other vectors of the
 //' same structure
@@ -27,7 +27,35 @@ int ij_to_id(int i, int j, int S) {
   return (2*i*S - i*i + 2*j - 3*i - 2) / 2;
 }
 
-//' No. passengers on the bus immediatly after each stops
+//' i_to_id - subsetting helper function 
+//'
+//' Helper function to find all indices from a vector with boarding-alighting-index-structure
+//'
+//' @param i integer denoting the ith stop
+//' @param S integer denoting the total no. stops
+//' @return An (armadilllo) unsigned integeger vector of parameter indexes that correspond to boardings at the ith stop
+// [[Rcpp::export]]
+arma::umat i_to_id(unsigned int i, unsigned int N, unsigned int S){
+  // first col - i
+  // second col - n
+  arma::umat ids(S-i-1, 2);
+  for(unsigned int k = 0; k < (S-i-1); ++k) {
+    ids(k, 0) = ij_to_id(i, i+k+1, S);
+    ids(k, 1) = N;
+  }
+
+  return ids.t();
+}
+
+// arma::uvec i_to_id(unsigned int i, unsigned int S) {
+//   arma::uvec ids(S-i-1);
+//   for(unsigned int k = 0; k < (S-i-1); ++k)
+//     ids(k) = ij_to_id(i, i+k+1, S);
+// 
+//   return ids;
+// }
+
+//' load - No. passengers on the bus immediatly after each stops
 //'
 //' @param x column vector of boardings and alightings
 //' @return vector of passengers loadings immediatly after each stops
@@ -46,6 +74,10 @@ IntegerVector load(IntegerVector x) {
   return w;
 }
 
+//' routing_matrix - construct routing matrix from no. stops (S)
+//'
+//' @param S length-one integer denoting the number of stops
+//' @return An (armadillo) integer matrix
 // [[Rcpp::export]]
 arma::imat routing_matrix(int s) {
 
@@ -74,10 +106,13 @@ arma::imat routing_matrix(int s) {
   return A;
 }
 
-//' Sample OD vector y from vector of load vector z
+//' ztoy - capped uniform simplex sampling 
+//'
+//' Helper function that generates an integer vector with constant total sum and varying caps
 //'
 //' @param z numeric vector of no. passengers approaching a single specific stop
 //' @param v double no. alighters at that specific stop
+//' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
 // [[Rcpp::export]]
 IntegerVector ztoy(IntegerVector z, double v) {
   std::vector<double> y = uniformSimplexSample(z.length(), v);
@@ -86,7 +121,7 @@ IntegerVector ztoy(IntegerVector z, double v) {
   return wrap(iy);
 }
 
-//' Conditional Sampling of OD vectors
+//' rod - Conditional Sampling of OD vectors
 //' 
 //' @param x a column vector containing boarding and alighting counts of 1 bus
 //' journey
@@ -139,15 +174,80 @@ List rod(IntegerVector x) {
       Named("lq") = lq);
 }
 
+// // [[Rcpp::export]]
+// NumericVector softmax(const NumericVector &x) {
+//   NumericVector ex;
+//   ex = exp(x);
+//   return ex / (1.0 * sum(ex));
+// }
+
 // [[Rcpp::export]]
-NumericVector softmax(const NumericVector &x) {
-  NumericVector ex;
-  ex = exp(x);
-  return ex / (1.0 * sum(ex));
+arma::vec softmax(const arma::vec &x) {
+  arma::vec y(x.size());
+  y = exp(x);
+  y(y.size() - 1) = 1; 
+  y = y / (1.0 * sum(y));
+  return y;
+}
+
+
+//' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
+//' 
+//' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
+//' 
+//' @param G: M x N matrix (G = Phi %*% t(Psi))
+//' @param rho: temperature parameter
+//' @return: M x N matrix Lambda of softmax values
+//' 
+// [[Rcpp::export]]
+arma::mat matrix_softmax(const arma::mat& G, double rho) {
+  // G has one row less than lambda - ie, G_S-1
+  int M = G.n_rows;
+  int N = G.n_cols;
+  int S = (1.0 + sqrt(1.0 + (8.0 * (M+1.0)))) / 2.0;
+
+  arma::ivec segment_lengths(S-1);
+  segment_lengths = rev(seq(2, S-1));
+
+  arma::mat Lambda(M+1, N, arma::fill::ones);
+  int start = 0;
+
+  for (int i = 0; i < S-2; ++i) {
+    int len = segment_lengths(i);
+    int end = start + len;
+
+    for (int col = 0; col < N; ++col) {
+      arma::vec g_block = G.submat(start, col, end - 1, col);
+      arma::vec scaled = rho * g_block;
+
+      arma::vec exp_vals(len);
+      exp_vals(arma::span(0, len - 2)) = exp(scaled(arma::span(0, len - 2)) - max(scaled));  // stabilization
+      exp_vals(len - 1) = 1.0;
+
+      double denom = accu(exp_vals);
+      for (int k = 0; k < len; ++k) {
+        Lambda(start + k, col) = exp_vals(k) / denom;
+      }
+    }
+
+    start += len;
+  }
+
+  return Lambda;
 }
 
 // [[Rcpp::export]]
 arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho) {
+
+  // perhaps best is to have this function
+  // evaluate the likelihood of a single y^n
+  // instead of all trips together -> needed for metropolis-hastings
+  //
+  // then have another function which computes the overall likelihood
+  // as the product of all p(y^n | lambda^n)
+
+  int S = x.size() / 2;
+  // alternative arma::uvec (for unsigned int vectors)
   arma::vec ay = as<arma::vec>(y);
   arma::vec ax = as<arma::vec>(x);
 
@@ -156,16 +256,31 @@ arma::mat log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, Nu
 
   // columns -> trips
   // rows -> stops (S-2)
-  arma::mat G = phi * psi.t();
-
-  arma::vec lambda(G.n_rows);
+  arma::mat G = aphi * apsi.t();
+  arma::mat lambda(G.n_rows, G.n_cols);
+  
   // set lambda_S-1,S = 1
-  for(int r = 0; r < G.n_rows; ++r)
-    lambda(i) = softmax(G.row(i) * rho);
+  for(arma::uword n = 0; n < G.n_cols; ++n) {
+    for(int i = 0; i < S; ++i) {
+      // lambda(i) = softmax(as<NumericVector>(G.row(i) * rho));
+      arma::umat idx;
+      idx = sub2ind(size(lambda), i_to_id(i, n, S));
+      lambda.elem(idx) = softmax(G.col(n) * rho);
+    }
+  }
 
   // Eq (6.11)
-  double log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
-  double log_sum_mult = sum(log(pow(lambda, y)) - lfactorial(y));
+  // for each bus trip
+  // double log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
+  // double log_sum_mult = sum(log(pow(lambda, y)) - lfactorial(y));
 
-  return log_sum_u + log_sum_mult;
+  // arma::vec likelihood(lambda.n_cols);
+  // for(arma::uword n = 0; n < lambda.n_cols; ++n) {
+  //   log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
+  //   log_sum_mult = sum(log(pow(lambda[,n], y)) - lfactorial(y));
+  // }
+
+
+  // return log_sum_u + log_sum_mult;
+  return lambda;
 }
