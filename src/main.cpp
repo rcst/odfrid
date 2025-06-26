@@ -12,63 +12,98 @@ using namespace Rcpp;
 //
 // [[Rcpp::depends(RcppArmadillo)]]
 
-//' ij_to_id - OD-vector(s) index mapping function
-//' 
-//' Help function to flatten indexing of OD-vectors and other vectors of the
-//' same structure
-//'
-//' @param i (zero-based) index of starting-stop
-//' @param j (zero-based) index of ending-stop
-//' @param S total no. stops
-//' @return A "flattened" one-dimensional index that enumerates the vector
-//' entries
-//' (3) a vector of corresponding Markov chain transition probabilities
-int ij_to_id(int i, int j, int S) {
-  return (2*i*S - i*i + 2*j - 3*i - 2) / 2;
-}
+// //' ij_to_id - OD-vector(s) index mapping function
+// //' 
+// //' Help function to flatten indexing of OD-vectors and other vectors of the
+// //' same structure
+// //'
+// //' @param i (zero-based) index of starting-stop
+// //' @param j (zero-based) index of ending-stop
+// //' @param S total no. stops
+// //' @return A "flattened" one-dimensional index that enumerates the vector
+// //' entries
+// //' (3) a vector of corresponding Markov chain transition probabilities
+// arma::uword ij_to_id(arma::uword i, arma::uword j, arma::uword S) {
+//   return (2*i*S - i*i + 2*j - 3*i - 2) / 2;
+// }
 
-//' i_to_id - subsetting helper function 
-//'
-//' Helper function to find all indices from a vector with boarding-alighting-index-structure
-//'
-//' @param i integer denoting the ith stop
-//' @param S integer denoting the total no. stops
-//' @return An (armadilllo) unsigned integeger vector of parameter indexes that correspond to boardings at the ith stop
-// [[Rcpp::export]]
-arma::umat i_to_id(unsigned int i, unsigned int N, unsigned int S){
-  // first col - i
-  // second col - n
-  arma::umat ids(S-i-1, 2);
-  for(unsigned int k = 0; k < (S-i-1); ++k) {
-    ids(k, 0) = ij_to_id(i, i+k+1, S);
-    ids(k, 1) = N;
+arma::vec log_choose_vec(const arma::ivec& n, const arma::ivec& k) {
+  if (n.n_elem != k.n_elem) {
+    stop("Vectors 'n' and 'k' must have the same length.");
   }
 
-  return ids.t();
+  arma::vec n_d = arma::conv_to<arma::vec>::from(n);
+  arma::vec k_d = arma::conv_to<arma::vec>::from(k);
+  arma::vec nk_d = n_d - k_d;
+
+  arma::vec result(n_d.n_elem, arma::fill::none);
+
+  // Logical masks
+  arma::uvec is_valid = (k >= 0) && (k <= n);
+  arma::uvec is_equal = (n == k);
+  arma::uvec is_zero  = (k == 0);
+  arma::uvec compute  = is_valid && is_equal == 0 && is_zero == 0;
+
+  // Set results
+  result.fill(-arma::datum::inf);  // default for invalid cases
+
+  // n == k → log(choose(n, n)) = 0
+  result.elem(find(is_equal)).zeros();
+
+  // k == 0 → log(choose(n, 0)) = 0
+  result.elem(find(is_zero)).zeros();
+
+  // General case
+  arma::uvec idx = find(compute);
+  if (!idx.is_empty()) {
+    arma::vec n_sub  = n_d.elem(idx);
+    arma::vec k_sub  = k_d.elem(idx);
+    arma::vec nk_sub = nk_d.elem(idx);
+
+    arma::vec logc = arma::lgamma(n_sub + 1.0) - arma::lgamma(k_sub + 1.0) - arma::lgamma(nk_sub + 1.0);
+    result.elem(idx) = logc;
+  }
+
+  return result;
 }
 
-// arma::uvec i_to_id(unsigned int i, unsigned int S) {
-//   arma::uvec ids(S-i-1);
-//   for(unsigned int k = 0; k < (S-i-1); ++k)
-//     ids(k) = ij_to_id(i, i+k+1, S);
-// 
-//   return ids;
-// }
+// [[Rcpp::export]]
+arma::mat log_choose_mat(const arma::imat& N, const arma::imat& K) {
+  if (size(N) != size(K)) {
+    stop("N and K must be the same size.");
+  }
+
+  int n_rows = N.n_rows;
+  int n_cols = N.n_cols;
+  arma::mat result(n_rows, n_cols, arma::fill::none);
+
+  for (int col = 0; col < n_cols; ++col) {
+    arma::ivec n_col = N.col(col);
+    arma::ivec k_col = K.col(col);
+
+    // Use the optimized log_choose_vector function
+    arma::vec logc = log_choose_vec(n_col, k_col);
+
+    result.col(col) = logc;
+  }
+
+  return result;
+}
 
 //' load - No. passengers on the bus immediatly after each stops
 //'
 //' @param x column vector of boardings and alightings
 //' @return vector of passengers loadings immediatly after each stops
 // [[Rcpp::export]]
-IntegerVector load(IntegerVector x) {
-  int S = x.size() / 2.0;
-  // std::cout << "S: " << S << std::endl;
-  IntegerVector w(S);
+arma::imat load(arma::imat& x) {
+  arma::uword S = x.n_rows / 2.0;
+  arma::imat w(S, x.n_cols);
 
-  for(int i = 0; i<S; ++i) {
-    // std::cout << x(i) << " " << x(S+i) << std::endl;
-    if(i==0) w(i) = x(i) - x(S+i);
-    else w(i) = w(i-1) + x(i) - x(S+i);
+  for(arma::uword c = 0; c < x.n_cols; ++c) {
+    for(arma::uword i = 0; i<S; ++i) {
+      if(i==0) w(i, c) = x(i, c) - x(S+i, c);
+      else w(i, c) = w(i-1, c) + x(i, c) - x(S+i, c);
+    }
   }
 
   return w;
@@ -114,64 +149,79 @@ arma::imat routing_matrix(int s) {
 //' @param v double no. alighters at that specific stop
 //' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
 // [[Rcpp::export]]
-IntegerVector ztoy(IntegerVector z, double v) {
-  std::vector<double> y = uniformSimplexSample(z.length(), v);
+arma::ivec ztoy(arma::ivec z, double v) {
+  std::vector<double> y = uniformSimplexSample(z.n_elem, v);
   std::vector<int> iy = roundWithPreservedSum(y);
-  iy = adjustWithCaps(iy, as<std::vector<int>>(z));
-  return wrap(iy);
+  // iy = adjustWithCaps(iy, as<std::vector<int>>(z));
+  iy = adjustWithCaps(iy, arma::conv_to<std::vector<int>>::from(z));
+  arma::ivec r(iy.data(), iy.size(), true);
+  return r;
+}
+
+arma::umat odform2sub(arma::umat& K, int j, int c) {
+  arma::uvec C(j);
+  C.fill(c);
+
+  return join_rows(K(arma::span(0, j-1), j), C).st();
 }
 
 //' rod - Conditional Sampling of OD vectors
 //' 
-//' @param x a column vector containing boarding and alighting counts of 1 bus
+//' @param x a integer matrix whoes columns each contain boarding and alighting counts of 1 bus
 //' journey
 //' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
 //' the log probability density from Markov chain transition probabilities (named lq)
 // [[Rcpp::export]]
-List rod(IntegerVector x) {
-  int S = x.size() / 2;
-  IntegerVector y(((S * S) - S) / 2);
-  IntegerVector z(((S * S) - S) / 2);
+List rod(arma::imat& x) {
+  arma::uword N = x.n_cols;
+  arma::uword S = x.n_rows / 2;
+  arma::uword D = S * (S-1) / 2;
+
+  arma::imat u = x.rows(0, S-1);
+  arma::imat v = x.rows(S, x.n_rows - 1);
+  arma::imat y(D, N);
+  arma::imat z(D, N);
+
+  // tracking indices of vectorized matrices 
+  arma::umat K(S, S);
+  arma::uvec eids = arma::trimatl_ind(size(K), -1);
+  K.elem(eids) = arma::linspace<arma::uvec>(0, D-1, D);
+  K = K.st();
+
   NumericVector pi(S);
 
-  int k =  0;
-  int k_ijm1 = 0;
-  IntegerVector kList;
+  arma::uword k =  0;
+  arma::uword k_ijm1 = 0;
 
-  for(int j=1; j<S; ++j) {
-	  // x[i] = u_i
-	  // x[S+j] = v_j
-    kList = IntegerVector::create();
-    
-    // +++ SETTING Z +++ 
-	  for(int i=0; i<j; ++i) {
-		  k = ij_to_id(i, j, S);
-      kList.push_back(k);
-		  k_ijm1= ij_to_id(i, j-1, S);
+  for(arma::uword c = 0; c < N; ++c) {
+    for(arma::uword j = 1; j < S; ++j) {
+      // +++ SETTING Z +++ 
+      for(arma::uword i = 0; i < j; ++i) {
+        // k = ij_to_id(i, j, S);
+        k = K(i, j);
+        // k_ijm1= ij_to_id(i, j-1, S);
+        k_ijm1 = K(i, j-1);
 
-		  if(i==j-1) z(k) = x(i);
-		  else z(k) = z(k_ijm1) - y(k_ijm1);
+        if(i==j-1) z(k, c) = u(i, c);
+        else z(k, c) = z(k_ijm1, c) - y(k_ijm1, c);
       }
 
-    // +++ SETTING Y +++
-    y[kList] = ztoy(z[kList], x(S+j));
+      // +++ SETTING Y +++
+      arma::uvec klist = arma::sub2ind(arma::size(y), odform2sub(K, j, c));
+      y.elem(klist) = ztoy(z.elem(klist), v(j, c));
+    }
   }
 
   // Markov Chain Transition Probabilities
-  NumericVector w;
-  NumericVector v;
-  NumericVector pi_1;
-  NumericVector pi_2;
-  w = load(x);
-  v = x[seq(S+1, x.size()-1)];
-  pi_1 = -1.0 * lchoose(w[seq(0, w.size()-2)], v[seq(1,v.size()-1)]);
-  pi_2 = lchoose(as<NumericVector>(z), as<NumericVector>(y));
+  arma::imat w = load(x);
 
-  double lq = sum(pi_1) + sum(pi_2);
+  arma::mat pi_1 = -1.0 * log_choose_mat(w.rows(arma::span(0, w.n_rows - 2)), v.rows(arma::span(1, v.n_rows - 1)));
+  arma::mat pi_2 = log_choose_mat(z, y);
 
-  return List::create(Named("y") = y,
-		  Named("z") = z,
-      Named("lq") = lq);
+  return List::create(
+      Named("y") = y,
+      Named("z") = z,
+      Named("q") = arma::sum(pi_1) + arma::sum(pi_2));
 }
 
 // // [[Rcpp::export]]

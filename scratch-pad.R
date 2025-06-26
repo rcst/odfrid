@@ -1,15 +1,25 @@
+i_to_id(i = 0, S = 6)
+i_to_id(i = 0, N = 3, S = 6)
+
 library(data.table)
 sum(softmax(1:10))
 
-S <- 20 
-S*(S-1)/2
-x <- c(seq(S-1, 0), seq(0, S-1))
+
+S <- 40
+N <- 10
+D <- S*(S-1)/2
+x <- rep(x = c(seq(S-1, 0), seq(0, S-1)), times = N) |> matrix(ncol = N)
 # checking for rare negative OD
+load(x)
 ll <- rod(x)
 ll[["y"]]
 ll[["z"]]
+ll[["lq"]] |> exp()
 exp(ll$lq)
-x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
+x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]]) |> matrix(ncol = N)
+
+
+
 all(x == x_check)
 
 for(i in 1:10) {
@@ -91,3 +101,21 @@ z <- c(5, 3, 7, 8, 8, 8, 10)
 x <- c(4, 3, 6, 9, 3, 7, 12)
 a <- adjustWithCaps(x = x, z = z)
 sum(x) == sum(a)
+
+S <- 5
+S*(S-1)/2.0
+M <- (S*(S-1)/2.0) - 1
+N <- 3
+D <- (1.0 + sqrt(1.0 + 8.0 * (M+1))) / 2.0
+S == D
+
+G <- matrix(data = rnorm(n = M*N), nrow = M, ncol = N)
+matrix_softmax(G, 1.0)
+
+microbenchmark(arma = log_choose_vector(n = 1:1000, k = rep(3, 1000)),
+            R = lchoose(n = 1:1000, k = rep(3, 1000)))
+
+log_choose(N = matrix(data = rep(1:1000, 3), ncol = 3), K = matrix(data = rep(rep(3, 1000), 3), ncol = 3)) |> exp()
+
+odformsub2ind(6, 4, 2)
+test(6, 2, 3)

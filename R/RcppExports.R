@@ -5,20 +5,20 @@ adjustWithCaps <- function(x, z) {
     .Call(`_odfrid_adjustWithCaps`, x, z)
 }
 
-#' OD-vector(s) index mapping function
+#' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
 #' 
-#' Help function to flatten indexing of OD-vectors and other vectors of the
-#' same structure
-#'
-#' @param i (zero-based) index of starting-stop
-#' @param j (zero-based) index of ending-stop
-#' @param S total no. stops
-#' @return A "flattened" one-dimensional index that enumerates the vector
-#' entries
-#' (3) a vector of corresponding Markov chain transition probabilities
+#' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
+#' 
+#' @param G: M x N matrix (G = Phi %*% t(Psi))
+#' @param rho: temperature parameter
+#' @return: M x N matrix Lambda of softmax values
 NULL
 
-#' No. passengers on the bus immediatly after each stops
+log_choose_mat <- function(N, K) {
+    .Call(`_odfrid_log_choose_mat`, N, K)
+}
+
+#' load - No. passengers on the bus immediatly after each stops
 #'
 #' @param x column vector of boardings and alightings
 #' @return vector of passengers loadings immediatly after each stops
@@ -26,21 +26,28 @@ load <- function(x) {
     .Call(`_odfrid_load`, x)
 }
 
+#' routing_matrix - construct routing matrix from no. stops (S)
+#'
+#' @param S length-one integer denoting the number of stops
+#' @return An (armadillo) integer matrix
 routing_matrix <- function(s) {
     .Call(`_odfrid_routing_matrix`, s)
 }
 
-#' Sample OD vector y from vector of load vector z
+#' ztoy - capped uniform simplex sampling 
+#'
+#' Helper function that generates an integer vector with constant total sum and varying caps
 #'
 #' @param z numeric vector of no. passengers approaching a single specific stop
 #' @param v double no. alighters at that specific stop
+#' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
 ztoy <- function(z, v) {
     .Call(`_odfrid_ztoy`, z, v)
 }
 
-#' Conditional Sampling of OD vectors
+#' rod - Conditional Sampling of OD vectors
 #' 
-#' @param x a column vector containing boarding and alighting counts of 1 bus
+#' @param x a integer matrix whoes columns each contain boarding and alighting counts of 1 bus
 #' journey
 #' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
 #' the log probability density from Markov chain transition probabilities (named lq)
@@ -50,6 +57,10 @@ rod <- function(x) {
 
 softmax <- function(x) {
     .Call(`_odfrid_softmax`, x)
+}
+
+log_likelihood <- function(y, x, phi, psi, rho) {
+    .Call(`_odfrid_log_likelihood`, y, x, phi, psi, rho)
 }
 
 roundWithPreservedSum <- function(fn) {
