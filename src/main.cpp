@@ -11,26 +11,11 @@ using namespace Rcpp;
 
 // via the depends attribute we tell Rcpp to create hooks for
 // RcppArmadillo so that the build process will know what to do
-//
 // [[Rcpp::depends(RcppArmadillo)]]
-
-// //' ij_to_id - OD-vector(s) index mapping function
-// //' 
-// //' Help function to flatten indexing of OD-vectors and other vectors of the
-// //' same structure
-// //'
-// //' @param i (zero-based) index of starting-stop
-// //' @param j (zero-based) index of ending-stop
-// //' @param S total no. stops
-// //' @return A "flattened" one-dimensional index that enumerates the vector
-// //' entries
-// //' (3) a vector of corresponding Markov chain transition probabilities
-// arma::uword ij_to_id(arma::uword i, arma::uword j, arma::uword S) {
-//   return (2*i*S - i*i + 2*j - 3*i - 2) / 2;
-// }
 
 // define global model parameters
 arma::imat x;
+arma::vec t;
 arma::imat y;
 arma::mat psi;
 arma::mat phi;
@@ -171,20 +156,28 @@ List rod(arma::imat& x) {
 //' @param k covariance matrix for column psi_d
 //' @param psi mapping-factor matrix
 //' @param d the index of column of matrix psi to be sampled
-void ess_psi(arma::mat& K, arma::uword& d) {
-  arma::uword N = psi.n_cols;
-  arma::vec nu = mvnrnd(arma::zeros(N), K);
+// void ess_psi(arma::mat& K, arma::uword& d) {
+//   arma::uword N = psi.n_cols;
+//   arma::vec nu = mvnrnd(arma::zeros(N), K);
+// 
+//   double gamma = arma::randu();
+// 
+//   // here we need all model parameters
+//   // what is a elegant way to avoid
+//   // passing all parameters all the time?
+//   // --> perhaps best not to make it a function
+//   double log_c = 
+//   
+//   do {
+//   } while ();
+// 
+// }
 
-  double gamma = arma::randu();
+// [[Rcpp::export]]
+arma::mat departure_times_covariance_matrix(const arma::vec& t, double sigma, double l) {
+  arma::mat T1 = repmat(t, 1, t.n_elem);
+  arma::mat T2 = repmat(t.t(), t.n_elem, 1);
+  arma::mat K = std::pow(sigma, 2) * exp(square(T1 - T2) / (-2.0 * std::pow(l, 2)));      
 
-  // here we need all model parameters
-  // what is a elegant way to avoid
-  // passing all parameters all the time?
-  // --> perhaps best not to make it a function
-  double log_c;
-  
-  do {
-  } while ();
-
+  return K;
 }
-
