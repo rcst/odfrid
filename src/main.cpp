@@ -153,27 +153,6 @@ List rod(arma::imat& x) {
       Named("q") = arma::sum(pi_1) + arma::sum(pi_2));
 }
 
-//' @param k covariance matrix for column psi_d
-//' @param psi mapping-factor matrix
-//' @param d the index of column of matrix psi to be sampled
-// void ess_psi(arma::mat& K, arma::uword& d) {
-//   arma::uword N = psi.n_cols;
-//   arma::vec nu = mvnrnd(arma::zeros(N), K);
-// 
-//   double gamma = arma::randu();
-// 
-//   // here we need all model parameters
-//   // what is a elegant way to avoid
-//   // passing all parameters all the time?
-//   // --> perhaps best not to make it a function
-//   double log_c = 
-//   
-//   do {
-//   } while ();
-// 
-// }
-
-// [[Rcpp::export]]
 arma::mat departure_times_covariance_matrix(const arma::vec& t, double sigma, double l) {
   arma::mat T1 = repmat(t, 1, t.n_elem);
   arma::mat T2 = repmat(t.t(), t.n_elem, 1);
@@ -181,3 +160,27 @@ arma::mat departure_times_covariance_matrix(const arma::vec& t, double sigma, do
 
   return K;
 }
+
+//' @param k covariance matrix for column psi_d
+//' @param psi mapping-factor matrix
+//' @param d the index of column of matrix psi to be sampled
+void ess_psi(arma::mat& K, arma::uword& d) {
+  arma::uword N = psi.n_cols;
+  arma::vec nu = mvnrnd(arma::zeros(N), K);
+
+  // copy
+  arma::mat apsi = psi;
+
+  double gamma = arma::randu();
+
+  double log_c = accu(log_likelihood()) + log(gamma);
+  double theta = arma::randu(arma::distr_param(0.0, 2.0 * arma::datum::pi));
+  double theta_min = theta - (2.0 * arma::datum::pi);
+  double theta_max = theta;
+
+  arma::vec cand_psi = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
+  
+  // do {
+  // } while ();
+}
+

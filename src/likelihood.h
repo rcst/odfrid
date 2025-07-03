@@ -10,6 +10,7 @@ arma::vec log_likelihood(const arma::mat& psi, const arma::uword d);
 arma::vec log_likelihood(const arma::uword d, const arma::mat& psi);
 
 arma::vec log_likelihood(double& rho);
+arma::vec log_likelihood();
 
 #endif
 

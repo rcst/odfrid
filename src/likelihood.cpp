@@ -38,3 +38,7 @@ vec log_likelihood(const mat& psi, const uword d) {
 vec log_likelihood(const uword d, const mat& phi) {
   return log_likelihood(y, x, psi, phi, rho);
 }
+
+vec log_likelihood() {
+  return log_likelihood(y, x, psi, phi, rho);
+}
