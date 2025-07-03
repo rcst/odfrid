@@ -1,5 +1,5 @@
-#ifndef MATH_H 
-#define MATH_H
+#ifndef ODMATH_H 
+#define ODMATH_H
 
 arma::vec log_choose_vec(const arma::ivec& n, const arma::ivec& k);
 arma::mat log_choose_mat(const arma::imat& N, const arma::imat& K);

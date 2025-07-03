@@ -11,7 +11,7 @@ using namespace arma;
 //'
 //' @param 
 //' @return An vec object with as many entries as columns of y
-vec log_likelihood(const imat& y, const imat& x, const mat& phi, const mat& psi) {
+vec log_likelihood(const imat& y, const imat& x, const mat& phi, const mat& psi, const double& rho) {
   int S = x.size() / 2;
   imat u = x(span(0, S-1), span::all);
 
@@ -28,9 +28,13 @@ vec log_likelihood(const imat& y, const imat& x, const mat& phi, const mat& psi)
 }
 
 vec log_likelihood(const imat& y, const imat& x) {
-  return log_likelihood(y, x, phi, psi);
+  return log_likelihood(y, x, psi, phi, rho);
 }
 
-vec log_likelihood(const mat& psi) {
-  return log_likelihood(y, x, phi, psi);
+vec log_likelihood(const mat& psi, const uword d) {
+  return log_likelihood(y, x, psi, phi, rho);
+}
+
+vec log_likelihood(const uword d, const mat& phi) {
+  return log_likelihood(y, x, psi, phi, rho);
 }
