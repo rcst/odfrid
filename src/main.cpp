@@ -4,6 +4,8 @@
 #include "adjust_with_caps.h"
 #include "round_with_preserved_sum.h"
 #include "uniform_simplex.h"
+#include "math.h"
+#include "likelihood.h"
 
 using namespace Rcpp;
 
@@ -27,68 +29,12 @@ using namespace Rcpp;
 //   return (2*i*S - i*i + 2*j - 3*i - 2) / 2;
 // }
 
-arma::vec log_choose_vec(const arma::ivec& n, const arma::ivec& k) {
-  if (n.n_elem != k.n_elem) {
-    stop("Vectors 'n' and 'k' must have the same length.");
-  }
-
-  arma::vec n_d = arma::conv_to<arma::vec>::from(n);
-  arma::vec k_d = arma::conv_to<arma::vec>::from(k);
-  arma::vec nk_d = n_d - k_d;
-
-  arma::vec result(n_d.n_elem, arma::fill::none);
-
-  // Logical masks
-  arma::uvec is_valid = (k >= 0) && (k <= n);
-  arma::uvec is_equal = (n == k);
-  arma::uvec is_zero  = (k == 0);
-  arma::uvec compute  = is_valid && is_equal == 0 && is_zero == 0;
-
-  // Set results
-  result.fill(-arma::datum::inf);  // default for invalid cases
-
-  // n == k → log(choose(n, n)) = 0
-  result.elem(find(is_equal)).zeros();
-
-  // k == 0 → log(choose(n, 0)) = 0
-  result.elem(find(is_zero)).zeros();
-
-  // General case
-  arma::uvec idx = find(compute);
-  if (!idx.is_empty()) {
-    arma::vec n_sub  = n_d.elem(idx);
-    arma::vec k_sub  = k_d.elem(idx);
-    arma::vec nk_sub = nk_d.elem(idx);
-
-    arma::vec logc = arma::lgamma(n_sub + 1.0) - arma::lgamma(k_sub + 1.0) - arma::lgamma(nk_sub + 1.0);
-    result.elem(idx) = logc;
-  }
-
-  return result;
-}
-
-// [[Rcpp::export]]
-arma::mat log_choose_mat(const arma::imat& N, const arma::imat& K) {
-  if (size(N) != size(K)) {
-    stop("N and K must be the same size.");
-  }
-
-  int n_rows = N.n_rows;
-  int n_cols = N.n_cols;
-  arma::mat result(n_rows, n_cols, arma::fill::none);
-
-  for (int col = 0; col < n_cols; ++col) {
-    arma::ivec n_col = N.col(col);
-    arma::ivec k_col = K.col(col);
-
-    // Use the optimized log_choose_vector function
-    arma::vec logc = log_choose_vec(n_col, k_col);
-
-    result.col(col) = logc;
-  }
-
-  return result;
-}
+// define global model parameters
+arma::imat x;
+arma::imat y;
+arma::mat psi;
+arma::mat phi;
+double rho;
 
 //' load - No. passengers on the bus immediatly after each stops
 //'
@@ -188,8 +134,6 @@ List rod(arma::imat& x) {
   K.elem(eids) = arma::linspace<arma::uvec>(0, D-1, D);
   K = K.st();
 
-  NumericVector pi(S);
-
   arma::uword k =  0;
   arma::uword k_ijm1 = 0;
 
@@ -224,111 +168,23 @@ List rod(arma::imat& x) {
       Named("q") = arma::sum(pi_1) + arma::sum(pi_2));
 }
 
-// // [[Rcpp::export]]
-// NumericVector softmax(const NumericVector &x) {
-//   NumericVector ex;
-//   ex = exp(x);
-//   return ex / (1.0 * sum(ex));
-// }
+//' @param k covariance matrix for column psi_d
+//' @param psi mapping-factor matrix
+//' @param d the index of column of matrix psi to be sampled
+void ess_psi(arma::mat& K, arma::uword& d) {
+  arma::uword N = psi.n_cols;
+  arma::vec nu = mvnrnd(arma::zeros(N), K);
 
-// [[Rcpp::export]]
-arma::vec softmax(const arma::vec &x) {
-  arma::vec y(x.size());
-  y = exp(x);
-  y(y.size() - 1) = 1; 
-  y = y / (1.0 * sum(y));
-  return y;
-}
+  double gamma = arma::randu();
 
-
-//' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
-//' 
-//' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
-//' 
-//' @param G: M x N matrix (G = Phi %*% t(Psi))
-//' @param rho: temperature parameter
-//' @return: M x N matrix Lambda of softmax values
-arma::mat matrix_softmax(const arma::mat& G, double rho) {
-  // G has one row less than lambda - ie, G_S-1
-  int M = G.n_rows;
-  int N = G.n_cols;
-  int S = (1.0 + sqrt(1.0 + (8.0 * (M+1.0)))) / 2.0;
-
-  arma::ivec segment_lengths(S-1);
-  segment_lengths = rev(seq(2, S-1));
-
-  arma::mat Lambda(M+1, N, arma::fill::ones);
-  int start = 0;
-
-  for (int i = 0; i < S-2; ++i) {
-    int len = segment_lengths(i);
-    int end = start + len;
-
-    for (int col = 0; col < N; ++col) {
-      arma::vec g_block = G.submat(start, col, end - 1, col);
-      arma::vec scaled = rho * g_block;
-
-      arma::vec exp_vals(len);
-      exp_vals(arma::span(0, len - 2)) = exp(scaled(arma::span(0, len - 2)) - max(scaled));  // stabilization
-      exp_vals(len - 1) = 1.0;
-
-      double denom = 1.0 + accu(exp_vals);
-      for (int k = 0; k < len; ++k) {
-        Lambda(start + k, col) = exp_vals(k) / denom;
-      }
-    }
-
-    start += len;
-  }
-
-  return Lambda;
-}
-
-// [[Rcpp::export]]
-double log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho) {
-
-  // perhaps best is to have this function
-  // evaluate the likelihood of a single y^n
-  // instead of all trips together -> needed for metropolis-hastings
-  //
-  // then have another function which computes the overall likelihood
-  // as the product of all p(y^n | lambda^n)
-
-  int S = x.size() / 2;
-  // alternative arma::uvec (for unsigned int vectors)
-  arma::vec ay = as<arma::vec>(y);
-  // arma::vec ax = as<arma::vec>(x);
-  arma::vec u = as<arma::vec>(x)(arma::span(0, S-1));
-
-  arma::mat aphi = as<arma::mat>(phi);
-  arma::mat apsi = as<arma::mat>(psi);
-
-  // columns -> trips
-  // rows -> stops (S-2)
-  arma::mat G = aphi * apsi.t();
-  arma::mat lambda = matrix_softmax(G, rho);
-
-  double logl = accu(lgamma(u + 1.0));
-  // logl = accu(lgamma(x(arma::span(0, S-1)))) + accu(y * log(lambda) - lgamma(y + 1.0));
-  // logl = accu(lgamma(u + 1.0)) + accu(y * log(lambda) - lgamma(y + 1.0));
-  for(arma::uword c = 0; c < lambda.n_cols; ++c) {
-    logl += accu(ay.col(c) * log(lambda.col(c)) - lgamma(ay.col(c) + 1.0));
-  }
+  // here we need all model parameters
+  // what is a elegant way to avoid
+  // passing all parameters all the time?
+  // --> perhaps best not to make it a function
+  double log_c;
   
-  // Eq (6.11)
-  // for each bus trip
-  // double log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
-  // double log_sum_u = accu(lgamma(x(arma::span(0, S-1))));
-  // double log_sum_mult = sum(log(pow(lambda, y)) - lfactorial(y));
-  // double log_sum_mult = accu(y * log(lambda) - lgamma(y + 1.0)); // missing power of y_ij!
+  do {
+  } while ();
 
-  // arma::vec likelihood(lambda.n_cols);
-  // for(arma::uword n = 0; n < lambda.n_cols; ++n) {
-  //   log_sum_u = sum(lfactorial(x[seq(0, S-1)]));
-  //   log_sum_mult = sum(log(pow(lambda[,n], y)) - lfactorial(y));
-  // }
-
-
-  // return log_sum_u + log_sum_mult;
-  return logl;
 }
+

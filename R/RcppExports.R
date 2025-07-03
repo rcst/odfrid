@@ -5,18 +5,10 @@ adjustWithCaps <- function(x, z) {
     .Call(`_odfrid_adjustWithCaps`, x, z)
 }
 
-#' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
-#' 
-#' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
-#' 
-#' @param G: M x N matrix (G = Phi %*% t(Psi))
-#' @param rho: temperature parameter
-#' @return: M x N matrix Lambda of softmax values
+#' @param k covariance matrix for column psi_d
+#' @param psi mapping-factor matrix
+#' @param d the index of column of matrix psi to be sampled
 NULL
-
-log_choose_mat <- function(N, K) {
-    .Call(`_odfrid_log_choose_mat`, N, K)
-}
 
 #' load - No. passengers on the bus immediatly after each stops
 #'
@@ -53,14 +45,6 @@ ztoy <- function(z, v) {
 #' the log probability density from Markov chain transition probabilities (named lq)
 rod <- function(x) {
     .Call(`_odfrid_rod`, x)
-}
-
-softmax <- function(x) {
-    .Call(`_odfrid_softmax`, x)
-}
-
-log_likelihood <- function(y, x, phi, psi, rho) {
-    .Call(`_odfrid_log_likelihood`, y, x, phi, psi, rho)
 }
 
 roundWithPreservedSum <- function(fn) {

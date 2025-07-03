@@ -23,18 +23,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// log_choose_mat
-arma::mat log_choose_mat(const arma::imat& N, const arma::imat& K);
-RcppExport SEXP _odfrid_log_choose_mat(SEXP NSEXP, SEXP KSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::imat& >::type N(NSEXP);
-    Rcpp::traits::input_parameter< const arma::imat& >::type K(KSEXP);
-    rcpp_result_gen = Rcpp::wrap(log_choose_mat(N, K));
-    return rcpp_result_gen;
-END_RCPP
-}
 // load
 arma::imat load(arma::imat& x);
 RcppExport SEXP _odfrid_load(SEXP xSEXP) {
@@ -80,32 +68,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// softmax
-arma::vec softmax(const arma::vec& x);
-RcppExport SEXP _odfrid_softmax(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(softmax(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// log_likelihood
-double log_likelihood(NumericVector y, NumericVector x, NumericMatrix phi, NumericMatrix psi, double rho);
-RcppExport SEXP _odfrid_log_likelihood(SEXP ySEXP, SEXP xSEXP, SEXP phiSEXP, SEXP psiSEXP, SEXP rhoSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
-    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
-    rcpp_result_gen = Rcpp::wrap(log_likelihood(y, x, phi, psi, rho));
-    return rcpp_result_gen;
-END_RCPP
-}
 // roundWithPreservedSum
 std::vector<int> roundWithPreservedSum(const std::vector<double>& fn);
 RcppExport SEXP _odfrid_roundWithPreservedSum(SEXP fnSEXP) {
@@ -133,13 +95,10 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_odfrid_adjustWithCaps", (DL_FUNC) &_odfrid_adjustWithCaps, 2},
-    {"_odfrid_log_choose_mat", (DL_FUNC) &_odfrid_log_choose_mat, 2},
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
     {"_odfrid_ztoy", (DL_FUNC) &_odfrid_ztoy, 2},
     {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
-    {"_odfrid_softmax", (DL_FUNC) &_odfrid_softmax, 1},
-    {"_odfrid_log_likelihood", (DL_FUNC) &_odfrid_log_likelihood, 5},
     {"_odfrid_roundWithPreservedSum", (DL_FUNC) &_odfrid_roundWithPreservedSum, 1},
     {"_odfrid_uniformSimplexSample", (DL_FUNC) &_odfrid_uniformSimplexSample, 3},
     {NULL, NULL, 0}

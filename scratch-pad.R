@@ -14,8 +14,7 @@ load(x)
 ll <- rod(x)
 ll[["y"]]
 ll[["z"]]
-ll[["lq"]] |> exp()
-exp(ll$lq)
+ll[["q"]]
 x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]]) |> matrix(ncol = N)
 
 
