@@ -178,9 +178,20 @@ void ess_psi(arma::mat& K, arma::uword& d) {
   double theta_min = theta - (2.0 * arma::datum::pi);
   double theta_max = theta;
 
-  arma::vec cand_psi = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
-  
-  // do {
-  // } while ();
+
+  bool fQuit = false;
+  while (!fQuit) {
+    arma::vec new_psi_d = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
+    apsi.col(d) = new_psi_d;
+    if(log_likelihood(apsi, d) <= log_c) {
+      // Shrink the sampling range and try a new point
+      if(theta <= 0) theta_min = theta;
+      else theta_max = theta;
+
+      theta = arma::randu(arma::distr_param(theta_min, theta_max));
+    } else fQuit = true;
+  }
+
+  return apsi;
 }
 
