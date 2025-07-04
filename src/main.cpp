@@ -164,7 +164,7 @@ arma::mat departure_times_covariance_matrix(const arma::vec& t, double sigma, do
 //' @param k covariance matrix for column psi_d
 //' @param psi mapping-factor matrix
 //' @param d the index of column of matrix psi to be sampled
-void ess_psi(arma::mat& K, arma::uword& d) {
+arma::mat ess_psi(arma::mat& K, arma::uword& d) {
   arma::uword N = psi.n_cols;
   arma::vec nu = mvnrnd(arma::zeros(N), K);
 
@@ -183,7 +183,7 @@ void ess_psi(arma::mat& K, arma::uword& d) {
   while (!fQuit) {
     arma::vec new_psi_d = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
     apsi.col(d) = new_psi_d;
-    if(log_likelihood(apsi, d) <= log_c) {
+    if(accu(log_likelihood(apsi, d)) <= log_c) {
       // Shrink the sampling range and try a new point
       if(theta <= 0) theta_min = theta;
       else theta_max = theta;
