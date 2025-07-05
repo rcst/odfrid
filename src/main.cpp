@@ -171,7 +171,7 @@ arma::mat ess_psi(arma::mat& K, arma::uword& d) {
   // copy
   arma::mat apsi = psi;
 
-  double gamma = arma::randu();
+  double gamma = arma::randu<double>();
 
   double log_c = accu(log_likelihood()) + log(gamma);
   double theta = arma::randu(arma::distr_param(0.0, 2.0 * arma::datum::pi));
@@ -193,5 +193,31 @@ arma::mat ess_psi(arma::mat& K, arma::uword& d) {
   }
 
   return apsi;
+}
+
+double ss_rho(double eps) {
+  double gamma = arma::randu<double>();
+  double log_p_rho = arma::log_normpdf(rho, log(0.1), 1.0);
+  double log_c = arma::accu(log_likelihood()) + log_p_rho + log(gamma);
+
+  double kappa = arma::randu<double>(arma::distr_param(0.0, eps));
+  double rho_min = rho - kappa;
+  double rho_max = rho_min + eps;
+
+  bool fQuit = false;
+  double new_rho  = 0.0;
+
+  while(!fQuit) {
+    new_rho = arma::randu<double>(arma::distr_param(rho_min, rho_max));
+
+    if(accu(log_likelihood(new_rho)) + arma::log_normpdf(new_rho, log(0.1), 1.0) > log_c) {
+      fQuit = true; 
+    } else {
+      if(new_rho < rho) rho_min = new_rho;
+      else rho_max = new_rho;
+    }
+  }
+
+  return new_rho;
 }
 
