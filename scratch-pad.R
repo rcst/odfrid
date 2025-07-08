@@ -118,3 +118,5 @@ log_choose(N = matrix(data = rep(1:1000, 3), ncol = 3), K = matrix(data = rep(re
 
 odformsub2ind(6, 4, 2)
 test(6, 2, 3)
+
+departure_times_covariance_matrix(t = , sigma = 1, l = 3600)

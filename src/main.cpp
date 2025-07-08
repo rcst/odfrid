@@ -1,11 +1,9 @@
 // -*- mode: C++; c-indent-level: 4; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 // we only include RcppArmadillo.h which pulls Rcpp.h in for us
 #include "RcppArmadillo.h"
-#include "adjust_with_caps.h"
-#include "round_with_preserved_sum.h"
-#include "uniform_simplex.h"
-#include "math.h"
-#include "likelihood.h"
+#include "odfrid/likelihood.h"
+#include "odfrid/od_sampler.h"
+#include "odfrid/samplers.h"
 
 using namespace Rcpp;
 
@@ -21,24 +19,6 @@ arma::mat psi;
 arma::mat phi;
 double rho;
 
-//' load - No. passengers on the bus immediatly after each stops
-//'
-//' @param x column vector of boardings and alightings
-//' @return vector of passengers loadings immediatly after each stops
-// [[Rcpp::export]]
-arma::imat load(arma::imat& x) {
-  arma::uword S = x.n_rows / 2.0;
-  arma::imat w(S, x.n_cols);
-
-  for(arma::uword c = 0; c < x.n_cols; ++c) {
-    for(arma::uword i = 0; i<S; ++i) {
-      if(i==0) w(i, c) = x(i, c) - x(S+i, c);
-      else w(i, c) = w(i-1, c) + x(i, c) - x(S+i, c);
-    }
-  }
-
-  return w;
-}
 
 //' routing_matrix - construct routing matrix from no. stops (S)
 //'
@@ -72,152 +52,5 @@ arma::imat routing_matrix(int s) {
   return A;
 }
 
-//' ztoy - capped uniform simplex sampling 
-//'
-//' Helper function that generates an integer vector with constant total sum and varying caps
-//'
-//' @param z numeric vector of no. passengers approaching a single specific stop
-//' @param v double no. alighters at that specific stop
-//' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
-// [[Rcpp::export]]
-arma::ivec ztoy(arma::ivec z, double v) {
-  std::vector<double> y = uniformSimplexSample(z.n_elem, v);
-  std::vector<int> iy = roundWithPreservedSum(y);
-  // iy = adjustWithCaps(iy, as<std::vector<int>>(z));
-  iy = adjustWithCaps(iy, arma::conv_to<std::vector<int>>::from(z));
-  arma::ivec r(iy.data(), iy.size(), true);
-  return r;
-}
 
-arma::umat odform2sub(arma::umat& K, int j, int c) {
-  arma::uvec C(j);
-  C.fill(c);
-
-  return join_rows(K(arma::span(0, j-1), j), C).st();
-}
-
-//' rod - Conditional Sampling of OD vectors
-//' 
-//' @param x a integer matrix whoes columns each contain boarding and alighting counts of 1 bus
-//' journey
-//' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
-//' the log probability density from Markov chain transition probabilities (named lq)
-// [[Rcpp::export]]
-List rod(arma::imat& x) {
-  arma::uword N = x.n_cols;
-  arma::uword S = x.n_rows / 2;
-  arma::uword D = S * (S-1) / 2;
-
-  arma::imat u = x.rows(0, S-1);
-  arma::imat v = x.rows(S, x.n_rows - 1);
-  arma::imat y(D, N);
-  arma::imat z(D, N);
-
-  // tracking indices of vectorized matrices 
-  arma::umat K(S, S);
-  arma::uvec eids = arma::trimatl_ind(size(K), -1);
-  K.elem(eids) = arma::linspace<arma::uvec>(0, D-1, D);
-  K = K.st();
-
-  arma::uword k =  0;
-  arma::uword k_ijm1 = 0;
-
-  for(arma::uword c = 0; c < N; ++c) {
-    for(arma::uword j = 1; j < S; ++j) {
-      // +++ SETTING Z +++ 
-      for(arma::uword i = 0; i < j; ++i) {
-        // k = ij_to_id(i, j, S);
-        k = K(i, j);
-        // k_ijm1= ij_to_id(i, j-1, S);
-        k_ijm1 = K(i, j-1);
-
-        if(i==j-1) z(k, c) = u(i, c);
-        else z(k, c) = z(k_ijm1, c) - y(k_ijm1, c);
-      }
-
-      // +++ SETTING Y +++
-      arma::uvec klist = arma::sub2ind(arma::size(y), odform2sub(K, j, c));
-      y.elem(klist) = ztoy(z.elem(klist), v(j, c));
-    }
-  }
-
-  // Markov Chain Transition Probabilities
-  arma::imat w = load(x);
-
-  arma::mat pi_1 = -1.0 * log_choose_mat(w.rows(arma::span(0, w.n_rows - 2)), v.rows(arma::span(1, v.n_rows - 1)));
-  arma::mat pi_2 = log_choose_mat(z, y);
-
-  return List::create(
-      Named("y") = y,
-      Named("z") = z,
-      Named("q") = arma::sum(pi_1) + arma::sum(pi_2));
-}
-
-arma::mat departure_times_covariance_matrix(const arma::vec& t, double sigma, double l) {
-  arma::mat T1 = repmat(t, 1, t.n_elem);
-  arma::mat T2 = repmat(t.t(), t.n_elem, 1);
-  arma::mat K = std::pow(sigma, 2) * exp(square(T1 - T2) / (-2.0 * std::pow(l, 2)));      
-
-  return K;
-}
-
-//' @param k covariance matrix for column psi_d
-//' @param psi mapping-factor matrix
-//' @param d the index of column of matrix psi to be sampled
-arma::mat ess_psi(arma::mat& K, arma::uword& d) {
-  arma::uword N = psi.n_cols;
-  arma::vec nu = mvnrnd(arma::zeros(N), K);
-
-  // copy
-  arma::mat apsi = psi;
-
-  double gamma = arma::randu<double>();
-
-  double log_c = accu(log_likelihood()) + log(gamma);
-  double theta = arma::randu(arma::distr_param(0.0, 2.0 * arma::datum::pi));
-  double theta_min = theta - (2.0 * arma::datum::pi);
-  double theta_max = theta;
-
-
-  bool fQuit = false;
-  while (!fQuit) {
-    arma::vec new_psi_d = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
-    apsi.col(d) = new_psi_d;
-    if(accu(log_likelihood(apsi, d)) <= log_c) {
-      // Shrink the sampling range and try a new point
-      if(theta <= 0) theta_min = theta;
-      else theta_max = theta;
-
-      theta = arma::randu(arma::distr_param(theta_min, theta_max));
-    } else fQuit = true;
-  }
-
-  return apsi;
-}
-
-double ss_rho(double eps) {
-  double gamma = arma::randu<double>();
-  double log_p_rho = arma::log_normpdf(rho, log(0.1), 1.0);
-  double log_c = arma::accu(log_likelihood()) + log_p_rho + log(gamma);
-
-  double kappa = arma::randu<double>(arma::distr_param(0.0, eps));
-  double rho_min = rho - kappa;
-  double rho_max = rho_min + eps;
-
-  bool fQuit = false;
-  double new_rho  = 0.0;
-
-  while(!fQuit) {
-    new_rho = arma::randu<double>(arma::distr_param(rho_min, rho_max));
-
-    if(accu(log_likelihood(new_rho)) + arma::log_normpdf(new_rho, log(0.1), 1.0) > log_c) {
-      fQuit = true; 
-    } else {
-      if(new_rho < rho) rho_min = new_rho;
-      else rho_max = new_rho;
-    }
-  }
-
-  return new_rho;
-}
 

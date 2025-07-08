@@ -1,6 +1,6 @@
 #include "RcppArmadillo.h"
-#include "globals.h"
-#include "math.h"
+#include "odfrid/globals.h"
+#include "odfrid/math.h"
 
 using namespace arma;
 

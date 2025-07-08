@@ -113,3 +113,7 @@ mat matrix_softmax(const mat& G, double rho) {
 
   return Lambda;
 }
+
+uword od_size_to_stops(uword N) {
+  return (1 + sqrt(1 + 8 * N)) / 2;
+}
