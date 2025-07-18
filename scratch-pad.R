@@ -1,25 +1,21 @@
+random_od_matrix()
+
 i_to_id(i = 0, S = 6)
 i_to_id(i = 0, N = 3, S = 6)
 
 library(data.table)
 sum(softmax(1:10))
 
-
-S <- 40
-N <- 10
-D <- S*(S-1)/2
-x <- rep(x = c(seq(S-1, 0), seq(0, S-1)), times = N) |> matrix(ncol = N)
+S <- 50 
+S*(S-1)/2
+x <- c(seq(S-1, 0), seq(0, S-1)) |> matrix()
 # checking for rare negative OD
-load(x)
 ll <- rod(x)
 ll[["y"]]
 ll[["z"]]
-ll[["q"]]
-x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]]) |> matrix(ncol = N)
-
-
-
-all(x == x_check)
+exp(ll$lq)
+x_check <- as.numeric(routing_matrix(S) %*% ll[["y"]])
+  all(x == x_check)
 
 for(i in 1:10) {
   ll <- rod_slow(x)
@@ -101,22 +97,18 @@ x <- c(4, 3, 6, 9, 3, 7, 12)
 a <- adjustWithCaps(x = x, z = z)
 sum(x) == sum(a)
 
-S <- 5
-S*(S-1)/2.0
-M <- (S*(S-1)/2.0) - 1
-N <- 3
-D <- (1.0 + sqrt(1.0 + 8.0 * (M+1))) / 2.0
-S == D
+S <- 6 
+N <- 3 
+M <- S*(S-1)/2
+x <- rep(x = c(seq(S-1, 0), seq(0, S-1)), times = N) |> matrix(nrow = 2*S, ncol = N)
+t <- 0:(N-1)
+t <- t * 5 * 60
 
-G <- matrix(data = rnorm(n = M*N), nrow = M, ncol = N)
-matrix_softmax(G, 1.0)
+out <- model_sample(u = x[1:S,], v = x[(S+1):(S*2),], dep_time = t, sample = 1000, warmup = 1000, D = 4) 
 
-microbenchmark(arma = log_choose_vector(n = 1:1000, k = rep(3, 1000)),
-            R = lchoose(n = 1:1000, k = rep(3, 1000)))
+names(out)
+out[["Y"]][,,6]
+dim(out[["Lambda"]])
+length(out)
 
-log_choose(N = matrix(data = rep(1:1000, 3), ncol = 3), K = matrix(data = rep(rep(3, 1000), 3), ncol = 3)) |> exp()
-
-odformsub2ind(6, 4, 2)
-test(6, 2, 3)
-
-departure_times_covariance_matrix(t = , sigma = 1, l = 3600)
+hist(out[["Lambda"]][6,1,])

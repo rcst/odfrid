@@ -1,7 +1,7 @@
 #include "RcppArmadillo.h"
 using namespace arma;
 
-vec log_choose_vec(const ivec& n, const ivec& k) {
+vec log_choose_vec(const uvec& n, const uvec& k) {
   if (n.n_elem != k.n_elem) {
     Rcpp::stop("Vectors 'n' and 'k' must have the same length.");
   }
@@ -41,7 +41,7 @@ vec log_choose_vec(const ivec& n, const ivec& k) {
   return result;
 }
 
-mat log_choose_mat(const imat& N, const imat& K) {
+mat log_choose_mat(const umat& N, const umat& K) {
   if (size(N) != size(K)) {
     Rcpp::stop("N and K must be the same size.");
   }
@@ -51,8 +51,8 @@ mat log_choose_mat(const imat& N, const imat& K) {
   mat result(n_rows, n_cols, fill::none);
 
   for (int col = 0; col < n_cols; ++col) {
-    ivec n_col = N.col(col);
-    ivec k_col = K.col(col);
+    uvec n_col = N.col(col);
+    uvec k_col = K.col(col);
 
     // Use the optimized log_choose_vector function
     vec logc = log_choose_vec(n_col, k_col);
@@ -114,6 +114,6 @@ mat matrix_softmax(const mat& G, double rho) {
   return Lambda;
 }
 
-uword od_size_to_stops(uword N) {
+uword od_size_to_nstops(uword N) {
   return (1 + sqrt(1 + 8 * N)) / 2;
 }

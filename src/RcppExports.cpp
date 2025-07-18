@@ -12,43 +12,71 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // routing_matrix
-arma::imat routing_matrix(int s);
+arma::umat routing_matrix(arma::uword s);
 RcppExport SEXP _odfrid_routing_matrix(SEXP sSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type s(sSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type s(sSEXP);
     rcpp_result_gen = Rcpp::wrap(routing_matrix(s));
     return rcpp_result_gen;
 END_RCPP
 }
-// od_size_to_stops
-arma::uword od_size_to_stops(arma::uword N);
-RcppExport SEXP _odfrid_od_size_to_stops(SEXP NSEXP) {
+// model_sample
+Rcpp::List model_sample(const arma::umat& u, const arma::umat& v, const arma::vec& dep_time, arma::uword sample, arma::uword warmup, arma::uword D);
+RcppExport SEXP _odfrid_model_sample(SEXP uSEXP, SEXP vSEXP, SEXP dep_timeSEXP, SEXP sampleSEXP, SEXP warmupSEXP, SEXP DSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::uword >::type N(NSEXP);
-    rcpp_result_gen = Rcpp::wrap(od_size_to_stops(N));
+    Rcpp::traits::input_parameter< const arma::umat& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< const arma::umat& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type dep_time(dep_timeSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type sample(sampleSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type warmup(warmupSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type D(DSEXP);
+    rcpp_result_gen = Rcpp::wrap(model_sample(u, v, dep_time, sample, warmup, D));
     return rcpp_result_gen;
 END_RCPP
 }
 // load
-arma::imat load(arma::imat& x);
+arma::umat load(arma::umat& x);
 RcppExport SEXP _odfrid_load(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::imat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< arma::umat& >::type x(xSEXP);
     rcpp_result_gen = Rcpp::wrap(load(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rod
+Rcpp::List rod(const arma::umat& x);
+RcppExport SEXP _odfrid_rod(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::umat& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(rod(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// test
+arma::mat test();
+RcppExport SEXP _odfrid_test() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(test());
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
-    {"_odfrid_od_size_to_stops", (DL_FUNC) &_odfrid_od_size_to_stops, 1},
+    {"_odfrid_model_sample", (DL_FUNC) &_odfrid_model_sample, 6},
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
+    {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
+    {"_odfrid_test", (DL_FUNC) &_odfrid_test, 0},
     {NULL, NULL, 0}
 };
 

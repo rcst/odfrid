@@ -11,9 +11,9 @@ using namespace arma;
 //' @param x column vector of boardings and alightings
 //' @return vector of passengers loadings immediatly after each stops
 // [[Rcpp::export]]
-arma::imat load(arma::imat& x) {
+arma::umat load(arma::umat& x) {
   uword S = x.n_rows / 2.0;
-  imat w(S, x.n_cols);
+  umat w(S, x.n_cols);
 
   for(uword c = 0; c < x.n_cols; ++c) {
     for(uword i = 0; i<S; ++i) {
@@ -32,12 +32,12 @@ arma::imat load(arma::imat& x) {
 //' @param z numeric vector of no. passengers approaching a single specific stop
 //' @param v double no. alighters at that specific stop
 //' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
-ivec ztoy(ivec z, double v) {
+uvec ztoy(uvec z, double v) {
   std::vector<double> y = uniformSimplexSample(z.n_elem, v);
-  std::vector<int> iy = roundWithPreservedSum(y);
+  std::vector<unsigned int> uy = roundWithPreservedSum(y);
   // iy = adjustWithCaps(iy, as<std::vector<int>>(z));
-  iy = adjustWithCaps(iy, conv_to<std::vector<int>>::from(z));
-  ivec r(iy.data(), iy.size(), true);
+  uy = adjustWithCaps(uy, conv_to<std::vector<unsigned int>>::from(z));
+  uvec r(uy.data(), uy.size(), true);
   return r;
 }
 
@@ -48,28 +48,37 @@ umat odform2sub(umat& K, int j, int c) {
   return join_rows(K(span(0, j-1), j), C).st();
 }
 
+uvec odform2sub(umat& K, int j) {
+  return K(span(0, j-1), j);
+}
+
 //' rod - Conditional Sampling of OD vectors
-//' 
-//' @param x a integer matrix whoes columns each contain boarding and alighting counts of 1 bus
-//' journey
-//' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
-//' the log probability density from Markov chain transition probabilities (named lq)
-Rcpp::List rod(imat& x) {
+void sample_od(bool force_accept = false) {
   uword N = x.n_cols;
   uword S = x.n_rows / 2;
-  uword D = S * (S-1) / 2;
+  uword M = S * (S-1) / 2;
 
-  imat u = x.rows(0, S-1);
-  imat v = x.rows(S, x.n_rows - 1);
-  imat y(D, N);
-  imat z(D, N);
+  umat u = x.rows(0, S-1);
+  umat v = x.rows(S, x.n_rows - 1);
+  // y, z and q candidate
+  uvec yc(M);
+  uvec zc(M);
+  double qc;
+  double p_acc = 0.0;
+
+  // Markov Chain Transition Probabilities
+  umat w = load(x);
+  // "constant" factor from data
+  // no need to re-compute everytime
+  const mat pi_1 = -1.0 * log_choose_mat(w.rows(0, w.n_rows - 2), v.rows(1, v.n_rows - 1));
 
   // tracking indices of vectorized matrices 
   umat K(S, S);
   uvec eids = trimatl_ind(size(K), -1);
-  K.elem(eids) = linspace<uvec>(0, D-1, D);
+  K.elem(eids) = linspace<uvec>(0, M-1, M);
   K = K.st();
 
+  uvec klist;
   uword k =  0;
   uword k_ijm1 = 0;
 
@@ -77,30 +86,98 @@ Rcpp::List rod(imat& x) {
     for(uword j = 1; j < S; ++j) {
       // +++ SETTING Z +++ 
       for(uword i = 0; i < j; ++i) {
-        // k = ij_to_id(i, j, S);
         k = K(i, j);
-        // k_ijm1= ij_to_id(i, j-1, S);
         k_ijm1 = K(i, j-1);
-
-        if(i==j-1) z(k, c) = u(i, c);
-        else z(k, c) = z(k_ijm1, c) - y(k_ijm1, c);
+        if(i==j-1) zc(k) = u(i, c);
+        else zc(k) = zc(k_ijm1) - yc(k_ijm1);
       }
 
       // +++ SETTING Y +++
-      uvec klist = sub2ind(size(y), odform2sub(K, j, c));
-      y.elem(klist) = ztoy(z.elem(klist), v(j, c));
+      klist = odform2sub(K, j);
+      yc.elem(klist) = ztoy(zc.elem(klist), v(j, c));
+    }
+    // decide whether to accept or dismiss candidate y, z and q
+    qc = sum(pi_1.col(c)) + sum(log_choose_vec(zc, yc));
+    // p_acc = (accu(log_likelihood(yc)) * q(c)) / (accu(log_likelihood()) * qc);
+
+    if(force_accept) {
+      y.col(c) = yc;
+      z.col(c) = zc;
+      q(c) = qc;
+    } else {
+      p_acc = (log_likelihood(yc, x(span::all, c)) + q(c)) - 
+        (log_likelihood(y(span::all, c), x(span::all, c)) + qc);
+      if(p_acc >= 0.0) {
+        // accept right away
+        y.col(c) = yc;
+        z.col(c) = zc;
+        q(c) = qc;
+      } else {
+        // accept with random probability
+        // comparing on log-scale
+        if(log(randu()) < p_acc) {
+          y.col(c) = yc;
+          z.col(c) = zc;
+          q(c) = qc;
+        }
+      }
     }
   }
-
-  // Markov Chain Transition Probabilities
-  imat w = load(x);
-
-  mat pi_1 = -1.0 * log_choose_mat(w.rows(span(0, w.n_rows - 2)), v.rows(span(1, v.n_rows - 1)));
-  mat pi_2 = log_choose_mat(z, y);
-
-  return Rcpp::List::create(
-      Rcpp::Named("y") = y,
-      Rcpp::Named("z") = z,
-      Rcpp::Named("q") = sum(pi_1) + sum(pi_2));
 }
 
+// [[Rcpp::export]]
+Rcpp::List rod(const arma::umat& x) {
+  uword N = x.n_cols;
+  uword S = x.n_rows / 2;
+  uword M = S * (S-1) / 2;
+
+  umat u = x.rows(0, S-1);
+  umat v = x.rows(S, x.n_rows - 1);
+  // y, z and q candidate
+  uvec yc(M);
+  uvec zc(M);
+  // double qc;
+  // double p_acc = 0.0;
+
+  //result
+  umat y(M, N);
+  umat z(M, N);
+
+  // Markov Chain Transition Probabilities
+  // umat w = load(x);
+  // "constant" factor from data
+  // no need to re-compute everytime
+  // const mat pi_1 = -1.0 * log_choose_mat(w.rows(0, w.n_rows - 2), v.rows(1, v.n_rows - 1));
+
+  // tracking indices of vectorized matrices 
+  umat K(S, S);
+  uvec eids = trimatl_ind(size(K), -1);
+  K.elem(eids) = linspace<uvec>(0, M-1, M);
+  K = K.st();
+
+  uvec klist;
+  uword k =  0;
+  uword k_ijm1 = 0;
+
+  for(uword c = 0; c < N; ++c) {
+    for(uword j = 1; j < S; ++j) {
+      // +++ SETTING Z +++ 
+      for(uword i = 0; i < j; ++i) {
+        k = K(i, j);
+        k_ijm1 = K(i, j-1);
+        if(i==j-1) zc(k) = u(i, c);
+        else zc(k) = zc(k_ijm1) - yc(k_ijm1);
+      }
+
+      // +++ SETTING Y +++
+      klist = odform2sub(K, j);
+      yc.elem(klist) = ztoy(zc.elem(klist), v(j, c));
+    }
+      y.col(c) = yc;
+      z.col(c) = zc;
+  }
+
+  return(Rcpp::List::create(
+        Rcpp::Named("y") = y,
+        Rcpp::Named("z") = z));
+}

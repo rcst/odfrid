@@ -9,17 +9,8 @@ routing_matrix <- function(s) {
     .Call(`_odfrid_routing_matrix`, s)
 }
 
-#' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
-#' 
-#' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
-#' 
-#' @param G: M x N matrix (G = Phi %*% t(Psi))
-#' @param rho: temperature parameter
-#' @return: M x N matrix Lambda of softmax values
-NULL
-
-od_size_to_stops <- function(N) {
-    .Call(`_odfrid_od_size_to_stops`, N)
+model_sample <- function(u, v, dep_time, sample, warmup, D) {
+    .Call(`_odfrid_model_sample`, u, v, dep_time, sample, warmup, D)
 }
 
 #' ztoy - capped uniform simplex sampling 
@@ -32,11 +23,6 @@ od_size_to_stops <- function(N) {
 NULL
 
 #' rod - Conditional Sampling of OD vectors
-#' 
-#' @param x a integer matrix whoes columns each contain boarding and alighting counts of 1 bus
-#' journey
-#' @return A named list of containing (1) the sampled OD vector (named y), (2) a corresponging vector (named z)
-#' the log probability density from Markov chain transition probabilities (named lq)
 NULL
 
 #' load - No. passengers on the bus immediatly after each stops
@@ -45,5 +31,21 @@ NULL
 #' @return vector of passengers loadings immediatly after each stops
 load <- function(x) {
     .Call(`_odfrid_load`, x)
+}
+
+rod <- function(x) {
+    .Call(`_odfrid_rod`, x)
+}
+
+#' ess_psi - Elliptical Slice Sampling of Psi
+#'
+#' One call to this function wll update the global matrix Psi based on the 
+#' current (global) set of parameters.
+#'
+#' @param k covariance matrix for column psi_d
+NULL
+
+test <- function() {
+    .Call(`_odfrid_test`)
 }
 

@@ -28,7 +28,7 @@ std::vector<double> uniformSimplexSample(int N, double C, double A) {
   return p;
 }
 
-std::vector<int> adjustWithCaps(const std::vector<int>& x, const std::vector<int>& z) {
+std::vector<unsigned int> adjustWithCaps(const std::vector<unsigned int>& x, const std::vector<unsigned int>& z) {
   if (x.size() != z.size()) {
     stop("Vectors x and z must have the same length.");
   }
@@ -41,7 +41,7 @@ std::vector<int> adjustWithCaps(const std::vector<int>& x, const std::vector<int
   }
 
   int n = x.size();
-  std::vector<int> result = x;
+  std::vector<unsigned int> result = x;
   int cappedSum = 0;
 
   // First, cap all values at z_i if they exceed it
@@ -91,7 +91,7 @@ bool compareByIndex(const TempElement &a, const TempElement &b) {
     return a.index < b.index;
 }
 
-std::vector<int> roundWithPreservedSum(const std::vector<double>& fn) {
+std::vector<unsigned int> roundWithPreservedSum(const std::vector<double>& fn) {
     int n = fn.size();
     std::vector<TempElement> tempArr(n);
     double arraySum = 0;
@@ -127,7 +127,7 @@ std::vector<int> roundWithPreservedSum(const std::vector<double>& fn) {
     std::sort(tempArr.begin(), tempArr.end(), compareByIndex);
 
     // Extract result values
-    std::vector<int> roundedResult(n);
+    std::vector<unsigned int> roundedResult(n);
     for (int i = 0; i < n; ++i) {
         roundedResult[i] = tempArr[i].result;
     }

@@ -1,16 +1,13 @@
 #ifndef LIKELIHOOD_H
 #define LIKELIHOOD_H
 
-arma::vec log_likelihood(const arma::imat& y, const arma::imat& x, const arma::mat& phi, const arma::mat& psi, const double& rho);
-arma::vec log_likelihood(const arma::imat& y, const arma::imat& x);
+double log_likelihood(const arma::umat& y, const arma::umat& x, const arma::mat& phi, const arma::mat& psi, const double& rho, const arma::umat& A);
 
-// to isolate the signatures, we use dummy arguments and change the
-// order of arguments
-arma::vec log_likelihood(const arma::mat& psi, const arma::uword d);
-arma::vec log_likelihood(const arma::uword d, const arma::mat& psi);
-
-arma::vec log_likelihood(const double& rho);
-arma::vec log_likelihood();
+double log_likelihood(const arma::umat& y, const arma::umat& x);
+double log_likelihood(const arma::mat& psi, const arma::uword d);
+double log_likelihood(const arma::uword d, const arma::mat& psi);
+double log_likelihood(const double& rho);
+double log_likelihood();
 
 #endif
 
