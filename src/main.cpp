@@ -56,26 +56,25 @@ arma::umat routing_matrix(arma::uword s) {
 
 // [[Rcpp::export]]
 Rcpp::List model_sample(
-    const arma::umat& u, 
-    const arma::umat& v, 
+    const arma::umat& ax, 
     const arma::vec& dep_time,
-    arma::uword sample, 
-    arma::uword warmup, 
-    arma::uword D) {
+    const arma::uword sample, 
+    const arma::uword warmup, 
+    const arma::uword D,
+    const arma::uword print_n = 100) {
 
-  arma::uword S = u.n_rows;
-  arma::uword N = u.n_cols;
-  arma::uword M = S * (S - 1) / 2;
+  const arma::uword S = ax.n_rows / 2;
+  const arma::umat& u = ax(arma::span(0, S-1), arma::span::all); 
+  const arma::umat& v = ax(arma::span(S, (2*S)-1), arma::span::all);
+
+  const arma::uword N = u.n_cols;
+  const arma::uword M = S * (S - 1) / 2;
 
   // allocate global variables
   A = routing_matrix(S);
   y = arma::umat(M, N);
   z = arma::umat(M, N);
   q = arma::vec(N);
-
-  // output
-  arma::ucube Y(M, N, sample);
-  arma::cube Lambda(M, N, sample);
 
   t = dep_time;
   x = join_cols(u, v);
@@ -89,8 +88,18 @@ Rcpp::List model_sample(
   arma::mat G;
   arma::mat lbd;
 
+  // output
+  arma::ucube Y(M, N, sample);
+  arma::cube Lambda(M, N, sample);
+  arma::cube Phi(phi.n_rows, phi.n_cols, sample);
+  arma::cube Psi(psi.n_rows, psi.n_cols, sample);
+  arma::vec Rho(sample);
+  
+
+
   sample_od(true);
 
+  arma::uword j = 0;
   for(arma::uword i = 0; i < (warmup + sample); ++i) {
     // update alighting probabilities
     G = phi * psi.t();
@@ -98,15 +107,20 @@ Rcpp::List model_sample(
 
     sample_od();
 
-    if(i > warmup) {
-      if(i % 100 == 0)
+    if(i >= warmup) {
+      if(i % print_n == 0)
         Rcpp::Rcout << "sampling: " <<  i << " [" << warmup + sample << "]" << std::endl;
       
       // collect OD vector and alighting probabilities
-      Y.slice(i-warmup-1) = y;
-      Lambda.slice(i-warmup-1) = lbd;
+      Y.slice(j) = y;
+      Lambda.slice(j) = lbd;
+      Phi.slice(j) = phi;
+      Psi.slice(j) = psi;
+      Rho(j) = rho;
+
+      ++j;
     } else {
-      if(i % 100 == 0)
+      if(i % print_n == 0)
         Rcpp::Rcout << "warm-up: " <<  i << " [" << warmup + sample << "]" << std::endl;
     }
 
@@ -122,6 +136,10 @@ Rcpp::List model_sample(
   }
 
   return Rcpp::List::create(
-      Rcpp::Named("Y") = Y,
-      Rcpp::Named("Lambda") = Lambda);
+      Rcpp::Named("y") = Y,
+      Rcpp::Named("lambda") = Lambda,
+      Rcpp::Named("phi") = Phi,
+      Rcpp::Named("psi") = Psi,
+      Rcpp::Named("rho") = rho,
+      Rcpp::Named("lq") = log_likelihood());
 }

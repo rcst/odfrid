@@ -36,6 +36,7 @@ uvec ztoy(uvec z, double v) {
   std::vector<double> y = uniformSimplexSample(z.n_elem, v);
   std::vector<unsigned int> uy = roundWithPreservedSum(y);
   // iy = adjustWithCaps(iy, as<std::vector<int>>(z));
+  //Rcpp::Rcout << "uy = " << std::endl << uvec(uy) << std::endl << "z = " << std::endl << z << "v = " << v << std::endl;
   uy = adjustWithCaps(uy, conv_to<std::vector<unsigned int>>::from(z));
   uvec r(uy.data(), uy.size(), true);
   return r;
@@ -94,6 +95,7 @@ void sample_od(bool force_accept = false) {
 
       // +++ SETTING Y +++
       klist = odform2sub(K, j);
+      //Rcpp::Rcout << ">>> j = " << j << " c = " << c << std::endl;
       yc.elem(klist) = ztoy(zc.elem(klist), v(j, c));
     }
     // decide whether to accept or dismiss candidate y, z and q

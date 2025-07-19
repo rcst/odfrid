@@ -104,11 +104,4 @@ x <- rep(x = c(seq(S-1, 0), seq(0, S-1)), times = N) |> matrix(nrow = 2*S, ncol 
 t <- 0:(N-1)
 t <- t * 5 * 60
 
-out <- model_sample(u = x[1:S,], v = x[(S+1):(S*2),], dep_time = t, sample = 1000, warmup = 1000, D = 4) 
 
-names(out)
-out[["Y"]][,,6]
-dim(out[["Lambda"]])
-length(out)
-
-hist(out[["Lambda"]][6,1,])

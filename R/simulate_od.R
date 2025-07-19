@@ -1,56 +1,54 @@
-#' generate_od_matrix - Function to generate an O-D matrix using gravity model
+#' generate_fake_pc - Generate Fake Passenger Counts
 #'
-#' @param production
-#' @param attraction
-#' @param distance_matrix
-#' @param total_trips
-#' @param distance_decay Numeric vector of length 1 that controls the likelihood of a trip being made with increasing distance
-#' @return A matrix object
+#' @param N the number of trips
+#' @param S the number of stops
+#' @param boarders The average number of boarder per stop.
+#' @return A matrix where each column is an OD vector
 #' @export
-generate_od_matrix <- function(num_zones, production, attraction, distance_matrix, total_trips, distance_decay) {
-  od_matrix <- matrix(0, nrow = num_zones, ncol = num_zones)
-  
-  for (i in 1:num_zones) {
-    for (j in 1:num_zones) {
-      od_matrix[i, j] <- (production[i] * attraction[j]) / (distance_matrix[i, j]^distance_decay)
+generate_fake_pc <- function(N = 100, t_step = 300, S = 6, dest, boarders = 20) {
+  M <- S * (S - 1) / 2
+
+  if(missing(dest))
+     dest <- sample(x = 1:S, size = 2) 
+
+  # index-tracking matrix
+  K <- matrix(nrow = S, ncol = S)
+  K[lower.tri(K)] <- 1:M
+  K <- t(K)
+  K[,dest[2]][1:(dest[2]-1)]
+
+  i <- function(j) K[,j][1:(j-1)]
+  j <- function(i) K[i,][(i+1):S]
+
+  lbd <- matrix(data = 0.1, nrow = M, ncol = N)
+
+  # set all alighting on last stops to 1
+  lbd[M,] <- 1.0
+  pA <- 0.8
+  pB <- 0.1
+  for(t in 1:N) {
+    pA_t <- (pB - pA) * (t-1)/N + pA
+    pB_t <- (pA - pB) * (t-1)/N + pB
+    lbd[i(dest[1]),t] <- pA_t
+    lbd[i(dest[2]),t] <- pB_t
+  }
+
+  # generate OD vector
+  y <- matrix(data = NA, nrow = M, ncol = N)
+  for(t in 1:N) {
+    for(i in 1:(S-1)) {
+      brds <- as.integer(rnorm(n = 1, mean = sqrt(boarders), sd = sqrt(5))^2)
+      y[j(i),t] <- rmultinom(n = 1, size = brds, prob = lbd[j(i),t])
     }
   }
-  
-  # Normalize the O-D matrix to match the total number of trips
-  od_matrix <- od_matrix / sum(od_matrix) * total_trips
-  return(od_matrix)
-}
 
-#' random_od_matrix - Randomly generate O-D matrices using gravity model
-#'
-#' @param N
-#' @param stops
-#' @param total_trips
-#' @param distance_decay
-#' @return List of O-D matrices
-#' @export
-random_od_matrix <- function(N = 1, stops = 6, total_trips = 200, distance_decay = 1.5) {
-  # TODO
-  # - generate integer values matrices
-  # - add top-level list that contains
-  #   - OD matrices as quadratic matrices/ upper triangular matrices
-  #   - OD matrices where rows are individual OD matrices as stacked vectors and columns are individual trips
-  #   - boarding and alighting vectors
+  # calculate passenger counts
+  x <- routing_matrix(S) %*% y
 
-
-  production <- runif(stops, min = 100, max = 500)  # Initial random production values
-  attraction <- runif(stops, min = 100, max = 500)  # Initial random attraction values
-
-  # can be improved
-  distance_matrix <- matrix(runif(stops^2, min = 1, max = 10), nrow = stops)
-  ods <- list()  # List to store O-D matrices
-
-  for(k in 1:N) {
-    ods[[k]] <- generate_od_matrix(stops, production, attraction, distance_matrix, total_trips, distance_decay)
-    # Smoothly vary production and attraction values for the next time step
-    production <- production + rnorm(stops, mean = 0, sd = 10)  # Small random perturbation
-    attraction <- attraction + rnorm(stops, mean = 0, sd = 10)  # Small random perturbation
-  }
-
-  return(ods)
+  return(list(S = S, 
+              destinations = dest, 
+              t =  (0:(N-1)) * t_step,
+              x = x, 
+              y = y, 
+              lambda = lbd))
 }

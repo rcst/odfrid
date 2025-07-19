@@ -23,18 +23,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // model_sample
-Rcpp::List model_sample(const arma::umat& u, const arma::umat& v, const arma::vec& dep_time, arma::uword sample, arma::uword warmup, arma::uword D);
-RcppExport SEXP _odfrid_model_sample(SEXP uSEXP, SEXP vSEXP, SEXP dep_timeSEXP, SEXP sampleSEXP, SEXP warmupSEXP, SEXP DSEXP) {
+Rcpp::List model_sample(const arma::umat& ax, const arma::vec& dep_time, const arma::uword sample, const arma::uword warmup, const arma::uword D, const arma::uword print_n);
+RcppExport SEXP _odfrid_model_sample(SEXP axSEXP, SEXP dep_timeSEXP, SEXP sampleSEXP, SEXP warmupSEXP, SEXP DSEXP, SEXP print_nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::umat& >::type u(uSEXP);
-    Rcpp::traits::input_parameter< const arma::umat& >::type v(vSEXP);
+    Rcpp::traits::input_parameter< const arma::umat& >::type ax(axSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type dep_time(dep_timeSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type sample(sampleSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type warmup(warmupSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type D(DSEXP);
-    rcpp_result_gen = Rcpp::wrap(model_sample(u, v, dep_time, sample, warmup, D));
+    Rcpp::traits::input_parameter< const arma::uword >::type sample(sampleSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type warmup(warmupSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type D(DSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type print_n(print_nSEXP);
+    rcpp_result_gen = Rcpp::wrap(model_sample(ax, dep_time, sample, warmup, D, print_n));
     return rcpp_result_gen;
 END_RCPP
 }

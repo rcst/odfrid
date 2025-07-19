@@ -9,8 +9,8 @@ routing_matrix <- function(s) {
     .Call(`_odfrid_routing_matrix`, s)
 }
 
-model_sample <- function(u, v, dep_time, sample, warmup, D) {
-    .Call(`_odfrid_model_sample`, u, v, dep_time, sample, warmup, D)
+model_sample <- function(ax, dep_time, sample, warmup, D, print_n = 100L) {
+    .Call(`_odfrid_model_sample`, ax, dep_time, sample, warmup, D, print_n)
 }
 
 #' ztoy - capped uniform simplex sampling 

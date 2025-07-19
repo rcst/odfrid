@@ -34,7 +34,9 @@ void ess_psi(mat& K) {
   double theta_max = theta;
   bool fQuit = false;
 
-  // Rcpp::Rcout << "In-Psi L(): " << log_likelihood() << std::endl;
+  // This could be accelerated by boardcasting i.e. .each_col()
+  // Qestion to Xiaxio: Is the likelihood evaluated based on old columns
+  // ... or already updated previous columns?
   for(uword d = 0; d < D; ++d) {
     fQuit = false;
     while (!fQuit) {
