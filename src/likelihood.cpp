@@ -13,7 +13,7 @@ using namespace arma;
 //' @return An vec object with as many entries as columns of y
 double log_likelihood(const umat& y, const umat& x, const mat& phi, const mat& psi, const double& rho, const umat& A) {
   uword S = x.n_rows / 2;
-  umat u = x(span(0, S-1), span::all);
+  umat u = x.rows(0, S-2);
 
   // columns -> trips
   // rows -> stops (S-2)
@@ -23,19 +23,23 @@ double log_likelihood(const umat& y, const umat& x, const mat& phi, const mat& p
   umat x_check = A * y;
 
   vec lq(y.n_cols);
+  lq.fill(-datum::inf);
+
+  urowvec lq_1 = sum(lgamma(u + 1.0));
+  rowvec lq_2 = sum((y % log(lbd)) - lgamma(y));
 
   // according to the size of y 
   // to enable single-trip-likelihood
-  for(uword c = 0; c < y.n_cols; ++c) {
-    if(all(x_check.col(c) == x.col(c))) {
-      lq(c) = accu(lgamma(u + 1.0)) + 
-        accu(
-            (y.col(c) % log(lbd.col(c))) - 
-            lgamma(y.col(c) + 1.0));
-    }
-  }
+  for(uword c = 0; c < y.n_cols; ++c)
+    if(all(x_check.col(c) == x.col(c)))
+      lq(c) = lq_1(c) + lq_2(c);
 
+  // parallelize!
   return accu(lq);
+}
+
+double log_likelihood(const uvec& y, const uvec& x, const uword n) {
+  return log_likelihood(y, x, phi, psi.row(n), rho, A);
 }
 
 double log_likelihood(const umat& y, const umat& x) {

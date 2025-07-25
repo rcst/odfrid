@@ -6,6 +6,8 @@
 #include "odfrid/od_sampler.h"
 #include "odfrid/samplers.h"
 
+#include<chrono>
+
 using namespace Rcpp;
 
 // via the depends attribute we tell Rcpp to create hooks for
@@ -94,45 +96,108 @@ Rcpp::List model_sample(
   arma::cube Phi(phi.n_rows, phi.n_cols, sample);
   arma::cube Psi(psi.n_rows, psi.n_cols, sample);
   arma::vec Rho(sample);
+  arma::vec L(sample);
   
+  // timing
+  arma::vec od_t(100);
+  arma::vec phi_t(100);
+  arma::vec psi_t(100);
+  arma::vec rho_t(100);
 
 
   sample_od(true);
 
+  auto start_t = std::chrono::high_resolution_clock::now();
+  auto end_t = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> duration = end_t - start_t;
+
   arma::uword j = 0;
   for(arma::uword i = 0; i < (warmup + sample); ++i) {
+
+    if(i >= warmup) {
+      if(i % print_n == 0)
+        Rcpp::Rcout << "sampling: " <<  
+          i << " [" << warmup + sample << "]" << std::endl;
+    } else {
+      if(i % print_n == 0)
+        Rcpp::Rcout << "warm-up: " <<  
+          i << " [" << warmup + sample << "]" << std::endl;
+    }
+
     // update alighting probabilities
     G = phi * psi.t();
     lbd = matrix_softmax(G, rho);
 
-    sample_od();
+    // timiing estimates
+    if(i < od_t.n_elem) {
+      start_t = std::chrono::high_resolution_clock::now();
+      sample_od_parallel();
+      end_t = std::chrono::high_resolution_clock::now();
+      duration = end_t - start_t;
+      od_t(i) = duration.count();
+    } else
+      sample_od_parallel();
 
+    if(i < phi_t.n_elem) {
+      start_t = std::chrono::high_resolution_clock::now();
+      ess_phi();
+      end_t = std::chrono::high_resolution_clock::now();
+      duration = end_t - start_t;
+      phi_t(i) = duration.count();
+    } else
+      ess_phi();
+
+    if(i < psi_t.n_elem) {
+      start_t = std::chrono::high_resolution_clock::now();
+      ess_psi(K);
+      end_t = std::chrono::high_resolution_clock::now();
+      duration = end_t - start_t;
+      psi_t(i) = duration.count();
+    } else
+      ess_psi(K);
+
+    if(i < rho_t.n_elem) {
+      start_t = std::chrono::high_resolution_clock::now();
+      ss_rho(0.001);
+      end_t = std::chrono::high_resolution_clock::now();
+      duration = end_t - start_t;
+      rho_t(i) = duration.count();
+    } else
+      ss_rho(0.001);
+
+    if(i == od_t.n_elem) {
+      Rcpp::Rcout << std::endl << 
+        "OD-sampling steps took " << arma::mean(od_t) << 
+        "s on average" << std::endl;
+      Rcpp::Rcout << 
+       "Phi sampling steps took " << arma::mean(phi_t) << 
+       "s on average" << std::endl;
+      Rcpp::Rcout << 
+        "Psi sampling steps took " << arma::mean(psi_t) << 
+        "s on average" << std::endl;
+      Rcpp::Rcout << 
+        "Rho sampling steps took " << arma::mean(rho_t) << 
+        "s on average" << std::endl;
+      Rcpp::Rcout << 
+        "Total Expected Sampling Duration is " << 
+        (arma::mean(od_t) + 
+         arma::mean(phi_t) + 
+         arma::mean(psi_t) + 
+         arma::mean(rho_t)) * (sample + warmup) / 60.0 << 
+        " min." << std::endl << std::endl;
+    }
+    
+    // Collect sampling data
     if(i >= warmup) {
-      if(i % print_n == 0)
-        Rcpp::Rcout << "sampling: " <<  i << " [" << warmup + sample << "]" << std::endl;
-      
-      // collect OD vector and alighting probabilities
       Y.slice(j) = y;
       Lambda.slice(j) = lbd;
       Phi.slice(j) = phi;
       Psi.slice(j) = psi;
       Rho(j) = rho;
+      L(j) = log_likelihood();
 
       ++j;
-    } else {
-      if(i % print_n == 0)
-        Rcpp::Rcout << "warm-up: " <<  i << " [" << warmup + sample << "]" << std::endl;
-    }
-
-    // Rcpp::Rcout << "Phi" << std::endl;
-    ess_phi();
-
-    // Rcpp::Rcout << "Psi" << std::endl;
-    ess_psi(K);
-
-    // Rcpp::Rcout << "Rho" << std::endl;
-    ss_rho(0.001);
-
+    } 
   }
 
   return Rcpp::List::create(
@@ -140,6 +205,6 @@ Rcpp::List model_sample(
       Rcpp::Named("lambda") = Lambda,
       Rcpp::Named("phi") = Phi,
       Rcpp::Named("psi") = Psi,
-      Rcpp::Named("rho") = rho,
-      Rcpp::Named("lq") = log_likelihood());
+      Rcpp::Named("rho") = Rho,
+      Rcpp::Named("lq") = L);
 }

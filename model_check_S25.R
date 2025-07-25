@@ -1,17 +1,19 @@
-inp <- generate_fake_pc(S = 25, N = 50, boarders = 20)
-names(inp)
-inp$y
-inp$x
-inp$x[25+15,]
-inp$x[25+7,]
-all(inp$x == routing_matrix(25) %*% inp$y)
+S <- 25
+S * (S-1) / 2
+inp <- generate_fake_pc(S = S, N = 100, boarders = 20)
 inp$dest
-out <- model_sample(ax = inp$x, 
+out <- model_sample(ax = inp$x,
                     dep_time = inp$t, 
-                    sample = 100, 
-                    warmup = 100, 
-                    D = 2, 
-                    print_n = 10) 
+                    sample = 2000, 
+                    warmup = 2000, 
+                    D = 4, 
+                    print_n = 1) 
+
+plot(out$lq, type = 'l')
+
+
+all(inp$x == routing_matrix(S) %*% out$y[,,4])
+all(out$y[,,10] == 0)
 
 names(out)
 save(out, file = "model_check_S25_data.rds")
@@ -74,4 +76,4 @@ out$lambda[K[inp$dest[1],][(inp$dest[1]+1):S],,]
 i <- function(j) K[,j][1:(j-1)]
 j <- function(i) K[i,][(i+1):S]
 
-
+test()

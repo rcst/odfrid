@@ -27,17 +27,22 @@ void ess_psi(mat& K) {
   vec nu = mvnrnd(zeros(N), K);
   // copy
   mat apsi = psi;
-  double gamma = randu<double>();
-  double log_c = log_likelihood() + log(gamma);
-  double theta = randu(distr_param(0.0, 2.0 * datum::pi));
-  double theta_min = theta - (2.0 * datum::pi);
-  double theta_max = theta;
+  double gamma;
+  double log_c;
+  double theta;
+  double theta_min;
+  double theta_max;
   bool fQuit = false;
 
   // This could be accelerated by boardcasting i.e. .each_col()
   // Qestion to Xiaxio: Is the likelihood evaluated based on old columns
   // ... or already updated previous columns?
   for(uword d = 0; d < D; ++d) {
+    gamma = randu<double>();
+    log_c = log_likelihood() + log(gamma);
+    theta = randu(distr_param(0.0, 2.0 * datum::pi));
+    theta_min = theta - (2.0 * datum::pi);
+    theta_max = theta;
     fQuit = false;
     while (!fQuit) {
       vec new_psi_d = psi.col(d) * std::cos(theta) + nu * std::sin(theta);
@@ -51,10 +56,9 @@ void ess_psi(mat& K) {
         fQuit = true;
       }
     }
-  }
-
   // update global Psi
   psi = apsi;
+  }
 }
 
 void ss_rho(double eps) {
@@ -89,7 +93,7 @@ void ess_phi() {
   // sample each column d for an i
   // block is phi_i for all d
   // instead of column-wise
-  uword D = phi.n_cols;
+  // uword D = phi.n_cols;
   uword N = phi.n_rows; 
   uword S = od_size_to_nstops(N+1);
   uword M = S * (S - 1) / 2;
@@ -104,10 +108,10 @@ void ess_phi() {
   double theta_min = 0;
   double theta_max = 0;
   bool fQuit = false;
-  vec nu;
+  mat nu;
 
   // helper - because 
-  uvec d_vec;
+  //uvec d_vec;
 
   // tracking indices of vectorized matrices 
   umat K(S, S);
@@ -121,7 +125,7 @@ void ess_phi() {
 
   for(uword i = 0; i < (S-2); ++i) {
     L = S-i-1;
-    nu = mvnrnd(zeros(L), eye(size(L, L)));
+    nu = mvnrnd(zeros(L), eye(size(L, L)), phi.n_cols);
 
     gamma = randu<double>();
     log_c = log_likelihood() + log(gamma);
@@ -131,63 +135,37 @@ void ess_phi() {
 
     // block indexes
     i_block = K(i, span(i+1, S-1));
-    vec new_phi_d;
+    mat new_phi_d;
 
-    // Rcpp::Rcout << ">>> Phi = " << std::endl << phi << std::endl; 
-
-    for(uword d = 0; d < D; ++d) {
-      d_vec = {d};
-      trials = 0;
-      fQuit = false;
-      // Rcpp::Rcout << "Sampling Column " << d << std::endl;
-      while (!fQuit & (trials < max_trials)) {
-        new_phi_d = phi(i_block, d_vec) * std::cos(theta) + nu * std::sin(theta);
-        // Rcpp::Rcout << ">>> Trial " << trials << std::endl << " Phi* (block) = " << std::endl << new_phi_d << " Phi (block) = " << std::endl << phi(i_block, d_vec) << std::endl << "<<<" << std::endl;
-        aphi(i_block, d_vec) = new_phi_d;
-        if(log_likelihood(d, aphi) > log_c) {
-          fQuit = true;
-        } else {
-          // Shrink the sampling range and try a new point
-          if(theta <= 0) theta_min = theta;
-          else theta_max = theta;
-          theta = randu(distr_param(theta_min, theta_max));
-          ++trials;
-        }
+    trials = 0;
+    fQuit = false;
+    while (!fQuit & (trials < max_trials)) {
+      new_phi_d = phi.rows(i_block) * std::cos(theta) + nu * std::sin(theta);
+      
+      // replace several blocks
+      aphi.rows(i_block) = new_phi_d;
+      if(log_likelihood(1, aphi) > log_c) {
+        fQuit = true;
+      } else {
+        // Shrink the sampling range and try a new point
+        if(theta <= 0) theta_min = theta;
+        else theta_max = theta;
+        theta = randu(distr_param(theta_min, theta_max));
+        ++trials;
+        if(trials == max_trials)
+          Rcpp::Rcout << "<<< Max. no. trials reached! >>>" << std::endl;
       }
     }
-
+    phi.rows(i_block) = aphi.rows(i_block);
+    }
   }
-  phi = aphi;
-}
-
-// // [[Rcpp::export]]
-// void test(arma::uword S, arma::uword i) {
-//   uword D = S * (S-1) / 2;
-//   umat K(S, S);
-//   uvec eids = trimatl_ind(size(K), -1);
-//   K.elem(eids) = linspace<uvec>(1, D, D);
-//   K = K.st();
-// 
-//   Rcpp::Rcout << K.rows(i, i).cols(i, i) << endl;
-// 
-//   Rcpp::Rcout << K << endl;
-//   Rcpp::Rcout << K(i, span(i+1, S-1)) << std::endl;
-// }
-
-// // [[Rcpp::export]]
-// arma::cube test() {
-//   cube x(10, 10, 10, fill::randu);
-//   return x;
-// }
-//
 
 // [[Rcpp::export]]
-arma::mat test() {
-  vec M(5, fill::randu);
+void test() {
+  umat y(300, 2, fill::value(3));
+  mat lbd(300, 100, fill::randu);
 
-  mat B(5, 5, fill::randu);
-  mat C = B.t() * B;
+  vec lq = sum((y % log(lbd)) - lgamma(y));
 
-  mat X = mvnrnd(M, C, 100);
-  return X;
+  Rcpp::Rcout << lq << std::endl;
 }
