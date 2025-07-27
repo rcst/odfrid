@@ -18,7 +18,7 @@ double log_likelihood(const umat& y, const umat& x, const mat& phi, const mat& p
   // columns -> trips
   // rows -> stops (S-2)
   mat G = phi * psi.t();
-  mat lbd = matrix_softmax(G, rho);
+  mat lbd = matrix_softmax(G, rho, S);
 
   umat x_check = A * y;
 

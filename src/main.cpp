@@ -126,7 +126,7 @@ Rcpp::List model_sample(
 
     // update alighting probabilities
     G = phi * psi.t();
-    lbd = matrix_softmax(G, rho);
+    lbd = matrix_softmax(G, rho, S);
 
     // timiing estimates
     if(i < od_t.n_elem) {
@@ -201,6 +201,8 @@ Rcpp::List model_sample(
   }
 
   return Rcpp::List::create(
+      Rcpp::Named("x") = x,
+      Rcpp::Named("t") = t,
       Rcpp::Named("y") = Y,
       Rcpp::Named("lambda") = Lambda,
       Rcpp::Named("phi") = Phi,

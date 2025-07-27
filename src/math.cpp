@@ -63,14 +63,6 @@ mat log_choose_mat(const umat& N, const umat& K) {
   return result;
 }
 
-vec softmax(const vec &x) {
-  vec y(x.size());
-  y = exp(x);
-  y(y.size() - 1) = 1; 
-  y = y / (1.0 * sum(y));
-  return y;
-}
-
 //' Compute softmax column-wise with fixed numerator = 1 for last entry of each segment
 //' 
 //' NOTE: Lambda should be returned so that the entry from second to last to last is always 1
@@ -78,32 +70,33 @@ vec softmax(const vec &x) {
 //' @param G: M x N matrix (G = Phi %*% t(Psi))
 //' @param rho: temperature parameter
 //' @return: M x N matrix Lambda of softmax values
-mat matrix_softmax(const mat& G, double rho) {
+mat matrix_softmax(const mat& G, double rho, uword S) {
   // G has one row less than lambda - ie, G_S-1
-  int M = G.n_rows;
-  int N = G.n_cols;
-  int S = (1.0 + sqrt(1.0 + (8.0 * (M+1.0)))) / 2.0;
-
-  ivec segment_lengths(S-1);
-  segment_lengths = reverse(regspace<ivec>(2, S-1));
+  uword M = G.n_rows;
+  uword N = G.n_cols;
 
   mat Lambda(M+1, N, fill::ones);
-  int start = 0;
+  uword start = 0;
+  uword end = 0;
+  uword len = 0;
 
-  for (int i = 0; i < S-2; ++i) {
-    int len = segment_lengths(i);
-    int end = start + len;
+  for (uword i = 0; i < S-2; ++i) {
+    // int len = segment_lengths(i);
+    len = S - i - 1;
+    end = start + len;
 
-    for (int col = 0; col < N; ++col) {
+    for (uword col = 0; col < N; ++col) {
       vec g_block = G.submat(start, col, end - 1, col);
       vec scaled = rho * g_block;
 
       vec exp_vals(len);
-      exp_vals(span(0, len - 2)) = exp(scaled(span(0, len - 2)) - max(scaled));  // stabilization
-      exp_vals(len - 1) = 1.0;
+      exp_vals(span(0, len - 2)) = 
+        exp(scaled(span(0, len - 2)) - max(scaled));  // stabilization
 
       double denom = 1.0 + accu(exp_vals);
-      for (int k = 0; k < len; ++k) {
+      exp_vals(len - 1) = 1.0;
+
+      for (uword k = 0; k < len; ++k) {
         Lambda(start + k, col) = exp_vals(k) / denom;
       }
     }
@@ -112,8 +105,4 @@ mat matrix_softmax(const mat& G, double rho) {
   }
 
   return Lambda;
-}
-
-uword od_size_to_nstops(uword N) {
-  return (1 + sqrt(1 + 8 * N)) / 2;
 }

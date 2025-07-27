@@ -94,8 +94,8 @@ void ess_phi() {
   // block is phi_i for all d
   // instead of column-wise
   // uword D = phi.n_cols;
-  uword N = phi.n_rows; 
-  uword S = od_size_to_nstops(N+1);
+  // uword N = phi.n_rows; 
+  uword S = x.n_rows / 2;
   uword M = S * (S - 1) / 2;
   uword L = 0;
 
