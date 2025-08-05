@@ -96,7 +96,7 @@ Rcpp::List model_sample(
   arma::cube Phi(phi.n_rows, phi.n_cols, sample);
   arma::cube Psi(psi.n_rows, psi.n_cols, sample);
   arma::vec Rho(sample);
-  arma::vec L(sample);
+  arma::vec L(warmup+sample);
   
   // timing
   arma::vec od_t(100);
@@ -188,13 +188,14 @@ Rcpp::List model_sample(
     }
     
     // Collect sampling data
+    L(i) = log_likelihood();
     if(i >= warmup) {
       Y.slice(j) = y;
       Lambda.slice(j) = lbd;
       Phi.slice(j) = phi;
       Psi.slice(j) = psi;
       Rho(j) = rho;
-      L(j) = log_likelihood();
+      // L(j) = log_likelihood();
 
       ++j;
     } 
