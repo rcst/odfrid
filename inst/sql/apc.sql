@@ -39,23 +39,29 @@
 -- ORDER BY arrival_time
 
 WITH cte AS (
-	SELECT trip_id, ton.route_id, arrival_time, departure_time, sequence, 
-	CASE 
-	WHEN direction = 'F' THEN false
-	ELSE true 
-	END AS inbound,
-	ST_SetSRID(ST_MakePoint(stop_lon, stop_lat), 4326) AS geom
-	FROM survey_on_bus_stop AS son
-	JOIN survey_on_bus_trip AS ton USING (trip_id)
+	WITH cte AS (
+		SELECT trip_id, ton.route_id, arrival_time, departure_time, sequence,	  
+		CASE	  
+			WHEN direction = 'F' THEN false	 
+			ELSE true	  
+	END AS inbound,	 
+	ST_SetSRID(ST_MakePoint(stop_lon, stop_lat), 4326) AS geom	 
+	FROM survey_on_bus_stop AS son	 
+	JOIN survey_on_bus_trip AS ton USING (trip_id) 
+) 
+SELECT * 
+FROM cte 
+JOIN LATERAL (	 
+	SELECT stop_id, rs.seq_id, s.geom AS mapped_geom, ST_DISTANCE(s.geom, ST_TRANSFORM(cte.geom, 32634)) AS dist_mapped_geom
+	FROM route_stops AS rs	 
+	JOIN stops AS s USING (stop_id)	 
+	WHERE rs.route_id = cte.route_id	 
+	AND rs.inbound = cte.inbound	 
+	ORDER BY ST_Transform(s.geom, 4326) <-> cte.geom	 
+	LIMIT 1 ) 
+AS rs ON true
 )
-SELECT *
+SELECT trip_id, route_id, arrival_time, departure_time, sequence, seq_id, dist_mapped_geom AS d, inbound
 FROM cte
-JOIN LATERAL (
-	SELECT stop_id, rs.seq_id, s.geom AS mapped_geom
-	FROM route_stops AS rs
-	JOIN stops AS s USING (stop_id)
-	WHERE rs.route_id = cte.route_id
-	AND rs.inbound = cte.inbound
-	ORDER BY ST_Transform(s.geom, 4326) <-> cte.geom
-	LIMIT 1
-) AS rs ON true;
+WHERE route_id = 2
+AND inbound = false;
