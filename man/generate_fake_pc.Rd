@@ -4,7 +4,7 @@
 \alias{generate_fake_pc}
 \title{generate_fake_pc - Generate Fake Passenger Counts}
 \usage{
-generate_fake_pc(N = 100, S = 6, boarders = 20)
+generate_fake_pc(N = 100, t_step = 300, S = 6, dest, boarders = 20)
 }
 \arguments{
 \item{N}{the number of trips}

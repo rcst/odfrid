@@ -11,36 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// broadcast_test_1
-int broadcast_test_1();
-RcppExport SEXP _odfrid_broadcast_test_1() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(broadcast_test_1());
-    return rcpp_result_gen;
-END_RCPP
-}
-// broadcast_test_2
-int broadcast_test_2();
-RcppExport SEXP _odfrid_broadcast_test_2() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(broadcast_test_2());
-    return rcpp_result_gen;
-END_RCPP
-}
-// broadcast_test
-int broadcast_test();
-RcppExport SEXP _odfrid_broadcast_test() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(broadcast_test());
-    return rcpp_result_gen;
-END_RCPP
-}
 // routing_matrix
 arma::umat routing_matrix(arma::uword s);
 RcppExport SEXP _odfrid_routing_matrix(SEXP sSEXP) {
@@ -101,9 +71,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_odfrid_broadcast_test_1", (DL_FUNC) &_odfrid_broadcast_test_1, 0},
-    {"_odfrid_broadcast_test_2", (DL_FUNC) &_odfrid_broadcast_test_2, 0},
-    {"_odfrid_broadcast_test", (DL_FUNC) &_odfrid_broadcast_test, 0},
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
     {"_odfrid_model_sample", (DL_FUNC) &_odfrid_model_sample, 6},
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
