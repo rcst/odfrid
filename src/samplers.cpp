@@ -120,8 +120,8 @@ void ess_phi() {
   K.elem(eids) = linspace<uvec>(0, M-1, M);
   K = K.st();
 
-  uword max_trials = 100;
-  uword trials = 0;
+  // uword max_trials = 100;
+  // uword trials = 0;
 
   for(uword i = 0; i < (S-2); ++i) {
     L = S-i-1;
@@ -137,9 +137,10 @@ void ess_phi() {
     i_block = K(i, span(i+1, S-1));
     mat new_phi_d;
 
-    trials = 0;
+    // trials = 0;
     fQuit = false;
-    while (!fQuit & (trials < max_trials)) {
+    // while (!fQuit & (trials < max_trials)) {
+    while (!fQuit) {
       new_phi_d = phi.rows(i_block) * std::cos(theta) + nu * std::sin(theta);
       
       // replace several blocks
@@ -151,9 +152,9 @@ void ess_phi() {
         if(theta <= 0) theta_min = theta;
         else theta_max = theta;
         theta = randu(distr_param(theta_min, theta_max));
-        ++trials;
-        if(trials == max_trials)
-          Rcpp::Rcout << "<<< Max. no. trials reached! >>>" << std::endl;
+        // ++trials;
+        // if(trials == max_trials)
+        //   Rcpp::Rcout << "<<< Max. no. trials reached! >>>" << std::endl;
       }
     }
     phi.rows(i_block) = aphi.rows(i_block);
