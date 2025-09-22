@@ -8,13 +8,13 @@ using namespace Rcpp;
 // Generate N values uniformly distributed on the simplex (sum = 1),
 // then optionally scale and shift each by C and A respectively.
 std::vector<double> uniformSimplexSample(int N, double C, double A) {
-  // std::random_device rd;
-  // std::mt19937 gen(rd()); // Mersenne Twister RNG
-  // std::uniform_real_distribution<> uniform(0.0, 1.0);
+  std::random_device rd;
+  static thread_local std::mt19937 gen(rd()); // Mersenne Twister RNG
+  std::uniform_real_distribution<> uniform(0.0, 1.0);
 
   std::vector<double> u(N);
   for (int i = 0; i < N; ++i) {
-    double v = (double)runif(1, 0, 1)[0];
+    double v = (double)uniform(gen);
     u[i] = -std::log(v); // Exponential(1) sample
   }
 
@@ -64,7 +64,7 @@ std::vector<unsigned int> adjustWithCaps(const std::vector<unsigned int>& x, con
   }
 
   std::random_device rd;
-  std::mt19937 gen(rd());
+  static thread_local std::mt19937 gen(rd());
 
   // Redistribute the excess randomly within capacity
   while (excess > 0) {

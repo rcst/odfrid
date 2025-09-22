@@ -38,6 +38,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// max_available_threads
+int max_available_threads();
+RcppExport SEXP _odfrid_max_available_threads() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(max_available_threads());
+    return rcpp_result_gen;
+END_RCPP
+}
 // load
 arma::umat load(arma::umat& x);
 RcppExport SEXP _odfrid_load(SEXP xSEXP) {
@@ -49,33 +59,35 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rod
-Rcpp::List rod(const arma::umat& x);
-RcppExport SEXP _odfrid_rod(SEXP xSEXP) {
+// sample_od_parallel
+void sample_od_parallel();
+RcppExport SEXP _odfrid_sample_od_parallel() {
 BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::umat& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rod(x));
-    return rcpp_result_gen;
+    sample_od_parallel();
+    return R_NilValue;
 END_RCPP
 }
 // test
-void test();
-RcppExport SEXP _odfrid_test() {
+arma::umat test(arma::uword N, arma::uword num_threads);
+RcppExport SEXP _odfrid_test(SEXP NSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    test();
-    return R_NilValue;
+    Rcpp::traits::input_parameter< arma::uword >::type N(NSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(test(N, num_threads));
+    return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_odfrid_routing_matrix", (DL_FUNC) &_odfrid_routing_matrix, 1},
     {"_odfrid_model_sample", (DL_FUNC) &_odfrid_model_sample, 6},
+    {"_odfrid_max_available_threads", (DL_FUNC) &_odfrid_max_available_threads, 0},
     {"_odfrid_load", (DL_FUNC) &_odfrid_load, 1},
-    {"_odfrid_rod", (DL_FUNC) &_odfrid_rod, 1},
-    {"_odfrid_test", (DL_FUNC) &_odfrid_test, 0},
+    {"_odfrid_sample_od_parallel", (DL_FUNC) &_odfrid_sample_od_parallel, 0},
+    {"_odfrid_test", (DL_FUNC) &_odfrid_test, 2},
     {NULL, NULL, 0}
 };
 

@@ -13,6 +13,10 @@ model_sample <- function(ax, dep_time, sample, warmup, D, print_n = 100L) {
     .Call(`_odfrid_model_sample`, ax, dep_time, sample, warmup, D, print_n)
 }
 
+max_available_threads <- function() {
+    .Call(`_odfrid_max_available_threads`)
+}
+
 #' ztoy - capped uniform simplex sampling 
 #'
 #' Helper function that generates an integer vector with constant total sum and varying caps
@@ -20,9 +24,6 @@ model_sample <- function(ax, dep_time, sample, warmup, D, print_n = 100L) {
 #' @param z numeric vector of no. passengers approaching a single specific stop
 #' @param v double no. alighters at that specific stop
 #' @return An integer vector of same length as z whos values are all smaller-or-equal to z and it's sum is equal to v
-NULL
-
-#' rod - Conditional Sampling of OD vectors
 NULL
 
 #' load - No. passengers on the bus immediatly after each stops
@@ -33,19 +34,12 @@ load <- function(x) {
     .Call(`_odfrid_load`, x)
 }
 
-rod <- function(x) {
-    .Call(`_odfrid_rod`, x)
+sample_od_parallel <- function() {
+    invisible(.Call(`_odfrid_sample_od_parallel`))
 }
 
-#' ess_psi - Elliptical Slice Sampling of Psi
-#'
-#' One call to this function wll update the global matrix Psi based on the 
-#' current (global) set of parameters.
-#'
-#' @param k covariance matrix for column psi_d
-NULL
-
-test <- function() {
-    invisible(.Call(`_odfrid_test`))
+#' Concurrently write to arma::umat
+test <- function(N, num_threads) {
+    .Call(`_odfrid_test`, N, num_threads)
 }
 

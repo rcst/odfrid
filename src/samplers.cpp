@@ -161,12 +161,3 @@ void ess_phi() {
     }
   }
 
-// [[Rcpp::export]]
-void test() {
-  umat y(300, 2, fill::value(3));
-  mat lbd(300, 100, fill::randu);
-
-  vec lq = sum((y % log(lbd)) - lgamma(y));
-
-  Rcpp::Rcout << lq << std::endl;
-}

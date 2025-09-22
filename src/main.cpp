@@ -5,6 +5,7 @@
 #include "odfrid/likelihood.h"
 #include "odfrid/od_sampler.h"
 #include "odfrid/samplers.h"
+#include "odfrid/threads.h"
 
 #include<chrono>
 
@@ -113,7 +114,6 @@ Rcpp::List model_sample(
 
   arma::uword j = 0;
   for(arma::uword i = 0; i < (warmup + sample); ++i) {
-
     if(i >= warmup) {
       if(i % print_n == 0)
         Rcpp::Rcout << "sampling: " <<  
@@ -167,8 +167,7 @@ Rcpp::List model_sample(
 
     if(i == od_t.n_elem) {
       Rcpp::Rcout << std::endl << 
-        "OD-sampling steps took " << arma::mean(od_t) << 
-        "s on average" << std::endl;
+        "OD-sampling steps took " << arma::mean(od_t) << std::endl;
       Rcpp::Rcout << 
        "Phi sampling steps took " << arma::mean(phi_t) << 
        "s on average" << std::endl;
@@ -195,7 +194,6 @@ Rcpp::List model_sample(
       Phi.slice(j) = phi;
       Psi.slice(j) = psi;
       Rho(j) = rho;
-      // L(j) = log_likelihood();
 
       ++j;
     } 
